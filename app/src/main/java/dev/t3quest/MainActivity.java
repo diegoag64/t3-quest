@@ -138,7 +138,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         setConversationChrome(false);selectPage(0);renderThreads();
         LabState.event(this,"thread.close","Returned to list in the existing panel");
     }
-    @Override public void onBackPressed(){if(inlineBrowser!=null){if(!inlineBrowser.goBack())closeInlinePr();return;}if(readingHost.backFromPr())return;if(readingHost.isOpen() || threadController.isOpen())closeThread();else super.onBackPressed();}
+    @Override public void onBackPressed(){if(inlineBrowser!=null){if(!inlineBrowser.goBack())closeInlinePr();return;}if(readingHost.backFromPr())return;if(readingHost.readerView()!=null)readingHost.readerView().navigateBack();else if(threadController.isOpen())threadWeb.navigateBack();else if(readingHost.isOpen())closeThread();else super.onBackPressed();}
     @Override protected void onSaveInstanceState(Bundle saved){super.onSaveInstanceState(saved);saved.putString("selectedThread",readingHost.isOpen()?readingHost.selectedThread():threadController.selectedThread());}
 
     private void buildConnection(LinearLayout root) {

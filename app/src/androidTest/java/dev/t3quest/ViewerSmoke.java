@@ -28,6 +28,20 @@ public class ViewerSmoke extends Instrumentation {
   private android.widget.Button button(View node,String label){if(node instanceof android.widget.Button&&label.contentEquals(((android.widget.Button)node).getText()))return (android.widget.Button)node;if(node instanceof ViewGroup){ViewGroup group=(ViewGroup)node;for(int i=0;i<group.getChildCount();i++){android.widget.Button found=button(group.getChildAt(i),label);if(found!=null)return found;}}return null;}
   private String browserJs(WebView web,String code)throws Exception{CountDownLatch done=new CountDownLatch(1);AtomicReference<String> result=new AtomicReference<>();runOnMainSync(()->web.evaluateJavascript(code,value->{result.set(value);done.countDown();}));if(!done.await(5,TimeUnit.SECONDS))throw new Exception("PR browser timed out");return result.get();}
   private void awaitBrowser(WebView web,String condition)throws Exception{for(int i=0;i<60;i++){if("true".equals(browserJs(web,condition)))return;Thread.sleep(500);}throw new Exception("GitHub page did not become ready");}
+  private void subagentProbe(Activity activity)throws Exception{
+    WebView original=readingWeb(activity);
+    await(activity,"!!document.querySelector('[data-child-thread-id]')");
+    js(activity,"(()=>{const card=document.querySelector('[data-child-thread-id]');for(let node=card.parentElement;node;node=node.parentElement)if(node.tagName==='DETAILS')node.open=true;card.scrollIntoView({block:'center'});window.viewerParent={id:QuestTest.state.selected,scroll:document.querySelector('.timeline-scroll').scrollTop,draft:document.querySelector('.draft-input').value};window.viewerChildId=card.dataset.childThreadId;card.click();return true;})()");
+    await(activity,"QuestTest.state.selected===window.viewerChildId && QuestTest.state.detail?.thread?.id===window.viewerChildId && !!document.querySelector('.top-state.live') && QuestTest.state.items.length>0");
+    if(readingWeb(activity)!=original)throw new Exception("Subagent navigation replaced the reader WebView");
+    await(activity,"!!document.querySelector('[aria-label=\"Back to parent thread\"]')");
+    await(activity,"document.querySelector('.topbar').getBoundingClientRect().top>=0 && document.querySelector('.timeline-scroll').clientHeight>150");
+    Thread.sleep(250); // Capture the child's painted frame, not the prior thread's backing buffer.
+    capture(activity,"viewer-subagent.png");
+    runOnMainSync(activity::onBackPressed);
+    await(activity,"QuestTest.state.selected===window.viewerParent.id && QuestTest.state.detail?.thread?.id===window.viewerParent.id && document.querySelector('.draft-input').value===window.viewerParent.draft && Math.abs(document.querySelector('.timeline-scroll').scrollTop-window.viewerParent.scroll)<2");
+    if(readingWeb(activity)!=original)throw new Exception("Parent return replaced the reader WebView");
+  }
   private void prProbe(Activity activity,String url)throws Exception{
     String root=GitHubPrUrl.root(url);if(root==null)throw new Exception("prUrl must identify a GitHub PR");
     WebView original=readingWeb(activity);View pane=(View)original.getParent();
@@ -97,7 +111,9 @@ public class ViewerSmoke extends Instrumentation {
         await(compact,"QuestTest.state.environment==="+environment+" && !!document.querySelector('.thread-row') && [...document.querySelectorAll('.thread-row')].every(row=>[...QuestTest.state.threads,...QuestTest.state.settledThreads].some(t=>t.id===row.dataset.threadId&&t.environmentId==="+environment+"))");
         expectedThread=js(compact,"document.querySelector('.thread-row').dataset.threadId");
       }
-      js(compact,"window.viewerNavigationSentinel='same-document';document.querySelector('.thread-row').click();true");
+      String target=args==null?null:args.getString("threadId");
+      String row=target==null?"document.querySelector('.thread-row')":"[...document.querySelectorAll('.thread-row')].find(row=>row.dataset.threadId==="+org.json.JSONObject.quote(target)+")";
+      js(compact,"window.viewerNavigationSentinel='same-document';"+row+".click();true");
       await(compact,"!!document.querySelector('.top-state.live') && !!document.querySelector('.entry')");
       if(expectedThread!=null)await(compact,"QuestTest.state.selected==="+expectedThread+" && QuestTest.state.detail?.thread?.id==="+expectedThread+" && QuestTest.state.items.length>0");
       String layout=js(compact,"JSON.stringify({viewport:[innerWidth,innerHeight],items:QuestTest.state.items.length,entries:document.querySelectorAll('.entry').length,boxes:['#app','.workspace-body','.conversation','.timeline-scroll','.timeline','.footer'].map(s=>{const n=document.querySelector(s),r=n.getBoundingClientRect(),c=getComputedStyle(n);return {selector:s,width:r.width,height:r.height,top:r.top,scrollHeight:n.scrollHeight,scrollTop:n.scrollTop,display:c.display,flex:c.flex,minHeight:c.minHeight}})})");
@@ -127,6 +143,7 @@ public class ViewerSmoke extends Instrumentation {
       }
       if(!"true".equals(js(compact,"!!document.querySelector('.draft-input') && (!!document.querySelector('.draft-input').value.trim() || document.querySelector('.draft-send').disabled)")))throw new Exception("Composer missing or empty draft allows sending");
       capture(compact,"viewer-expanded.png");
+      if(cycle==0&&args!=null&&"true".equals(args.getString("requireSubagent"))){subagentProbe(compact);result.putString("subagent","PASS: child history, same reader, hardware Back restores parent draft and scroll");}
       if(cycle==0&&args!=null&&args.getString("prUrl")!=null){prProbe(compact,args.getString("prUrl"));result.putString("prBrowser","PASS: GitHub conversation/files/checks, no T3 interface, retained reader and draft");}
       js(compact,"document.querySelector('[aria-label=\"Back to threads\"]').click();true");
       await(compact,"!!document.querySelector('.list-only .thread-row')");
@@ -142,6 +159,6 @@ public class ViewerSmoke extends Instrumentation {
       capture(compact,"viewer-environments.png");
       result.putString("environments","PASS: filtered and read history from "+environments.length()+" connected environments");
     }
-    result.putString("returned",size(compact));result.putString("stream","PASS: "+cycles+" open/back cycles, stable parent task/display/size/document, reader cleanup, visible scrollable history. Mode: "+result.getString("mode")+". Physical centering requires headset review. "+result.getString("prBrowser","")+" "+result.getString("environments","")+"\n");finish(Activity.RESULT_OK,result);
+    result.putString("returned",size(compact));result.putString("stream","PASS: "+cycles+" open/back cycles, stable parent task/display/size/document, reader cleanup, visible scrollable history. Mode: "+result.getString("mode")+". Physical centering requires headset review. "+result.getString("prBrowser","")+" "+result.getString("environments","")+" "+result.getString("subagent","")+"\n");finish(Activity.RESULT_OK,result);
   }catch(Exception e){result.putString("stream","FAIL: "+e+"\n");finish(Activity.RESULT_CANCELED,result);}}
 }

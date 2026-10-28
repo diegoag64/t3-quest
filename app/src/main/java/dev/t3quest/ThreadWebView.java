@@ -83,6 +83,9 @@ public final class ThreadWebView extends WebView {
         mode="list";threadId=null;pending.clear();
         if(ready)evaluateJavascript("QuestView.configure({mode:'list'})",null);
     }
+    public void navigateBack() {
+        if(ready)evaluateJavascript("QuestView.back()",null);
+    }
     public void send(JSONObject event) {
         if (!ready) { if (event.optString("kind").equals("list")) pendingList = event; else pending.put(event.optString("kind"), event); return; }
         String data = Base64.encodeToString(event.toString().getBytes(StandardCharsets.UTF_8), Base64.NO_WRAP);

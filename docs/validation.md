@@ -148,3 +148,12 @@ The test performed no actual thread sends, recordings, paid transcription, or Gi
 The reader previously promoted every command failure to a red row outside the completed turn's work group. T3 folds failures that precede the final assistant reply. Quest now follows that rule, keeping the command and its output inside the expandable work details. Failures after the final reply remain visible. This supersedes the earlier failed-command visibility behavior described above.
 
 A read-only check confirmed that the reported command was marked failed within a completed run, before its final reply. The full 18-case browser suite passed after the fix. The final focused run passed three cases covering completed commands with failure exits, explicit failed status, and failures after the final reply. Synthetic screenshots were inspected. The Android build passed, the updated APK was installed on Quest, and the device test passed history reads from both connected environments with stable parent geometry and reader cleanup. No real messages or recordings were sent.
+
+
+## Subagent conversation navigation
+
+Linked subagent cards already opened child histories through environment-scoped IDs. The reader now keeps a bounded parent path within the current panel. Both the header arrow and Android Back return to the parent before closing the reader. Parent history, expanded work, and scroll position are restored while the controller refreshes the thread. Switching to an unrelated sidebar thread clears the parent path. Drafts remain stored per thread.
+
+All 48 Node tests, 21 browser tests, and eight Android unit tests pass. Browser coverage includes nested children absent from the sidebar, simulated live child updates, separate drafts, loaded parent history, scroll restoration, child errors, and unrelated navigation. The synthetic child-reader screenshot was inspected. Both Android APKs build successfully.
+
+The update is installed on Quest. The opt-in device probe with `-e requireSubagent true -e threadId <parent-id>` clicked a real subagent card, loaded its history, and invoked Android Back. It verified the same reader WebView remained mounted and the parent ID, draft, and scroll position returned. The surrounding smoke test passed two open/back cycles with unchanged compact parent geometry and visible history. The private device capture was inspected locally and stays ignored. The test sent no messages and made no recordings.

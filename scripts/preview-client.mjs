@@ -12,6 +12,16 @@ function open(id){
   if(window.QuestTest.state.mode==='thread')window.QuestView.selectThread(id);else window.QuestView.configure({mode:'thread',threadId:id});
   const thread=threads.find(t=>t.id===id)||settledThreads.find(t=>t.id===id);
   const detail=structuredClone(conversation);detail.thread=thread;
+  if(scenario==='subagents'){
+    if(id==='reader')detail.items.find(r=>r.id==='child').item.childThreadId='child-review';
+    else if(['child-review','grandchild-check'].includes(id)){
+      detail.thread={...threads[0],id,title:id==='child-review'?'Review conversation layout':'Check nested history',status:'running'};
+      detail.runs=[{id:'child-run',status:'running'}];
+      detail.items=[{id:'child-message',position:1,item:{id:'child-message',type:'assistant_message',runId:'child-run',text:'Inspecting the child conversation.',streaming:true}}];
+      if(id==='child-review')detail.items.push({id:'nested-task',position:2,item:{id:'nested-task',type:'subagent',runId:'child-run',status:'running',title:'Check nested history',childThreadId:'grandchild-check'}});
+      detail.hasMoreHistory=false;detail.historyCursor=null;
+    }
+  }
   if(scenario==='long')detail.items.at(-1).item.text+='\n\n'+Array.from({length:50},(_,i)=>'Paragraph '+i+': '+('Long unbroken text '+ 'x'.repeat(100)+' ')).join('\n\n');
   window.QuestView.receive({kind:'snapshot',threadId:id,payload:detail});composer();
   if(scenario==='offline')window.QuestView.receive({kind:'error',threadId:id,payload:{message:'Laptop disconnected. Showing the last conversation.'}});

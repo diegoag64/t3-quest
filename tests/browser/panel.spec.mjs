@@ -1,6 +1,51 @@
 import {test,expect} from '@playwright/test';
 const ready=async(page,url='/')=>{await page.goto(url);await page.waitForFunction(()=>window.previewReady);};
 const noOverflow=async page=>expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+test('subagent threads support nested navigation and restore parent history and drafts',async({page},info)=>{
+  await ready(page,'/?mode=reader&scenario=subagents');
+  const draft=page.getByRole('textbox',{name:'Message draft'});
+  await draft.fill('Parent draft');
+  await page.getByRole('button',{name:'Load earlier messages'}).click();
+  await page.locator('.work>summary').click();
+  await page.locator('[data-child-thread-id="child-review"]').scrollIntoViewIfNeeded();
+  const parentScroll=await page.locator('.timeline-scroll').evaluate(n=>n.scrollTop);
+  await page.locator('[data-child-thread-id="child-review"]').click();
+  await expect(page.locator('.breadcrumb')).toContainText('Review conversation layout');
+  await expect(draft).toHaveValue('');await draft.fill('Child draft');
+  await page.evaluate(()=>{
+    const data=structuredClone(QuestTest.state.detail);data.items[0].item.text='Child progress updated live.';
+    QuestView.receive({kind:'snapshot',threadId:'child-review',payload:data});
+  });
+  await expect(page.getByText('Child progress updated live.')).toBeVisible();
+  await page.screenshot({path:info.outputPath('subagent-reader.png')});
+  await page.locator('[data-child-thread-id="grandchild-check"]').click();
+  await expect(page.locator('.breadcrumb')).toContainText('Check nested history');
+  await page.getByRole('button',{name:'Back to parent thread'}).click();
+  await expect(page.locator('.breadcrumb')).toContainText('Review conversation layout');
+  await expect(draft).toHaveValue('Child draft');
+  await page.getByRole('button',{name:'Back to parent thread'}).click();
+  await expect(page.locator('.breadcrumb')).toContainText('Polish the Quest thread reader');
+  await expect(draft).toHaveValue('Parent draft');
+  await expect(page.locator('.work')).toHaveAttribute('open','');
+  expect(await page.evaluate(()=>QuestTest.state.items.some(r=>r.id==='older'))).toBe(true);
+  expect(await page.locator('.timeline-scroll').evaluate(n=>n.scrollTop)).toBeCloseTo(parentScroll,0);
+  await page.getByRole('button',{name:'Back to threads'}).click();
+  await expect(page.locator('.list-only')).toBeVisible();
+  expect(await page.evaluate(()=>previewActions.some(a=>a.action==='sendMessage'))).toBe(false);
+});
+test('a missing child can return to its parent and unrelated navigation clears the parent path',async({page})=>{
+  await ready(page,'/?mode=reader&scenario=subagents');
+  await page.locator('.work>summary').click();await page.locator('[data-child-thread-id="child-review"]').click();
+  await page.evaluate(()=>QuestView.receive({kind:'error',threadId:'child-review',payload:{message:'Child unavailable.'}}));
+  await expect(page.getByText('Child unavailable.')).toBeVisible();
+  await page.evaluate(()=>QuestView.back());
+  await expect(page.locator('.breadcrumb')).toContainText('Polish the Quest thread reader');
+  await page.locator('[data-child-thread-id="child-review"]').click();
+  await page.getByRole('button',{name:'Toggle thread sidebar'}).click();
+  await page.locator('[data-thread-id="approval"]').click();
+  await expect(page.getByRole('button',{name:'Back to threads'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Back to parent thread'})).toHaveCount(0);
+});
 test('desktop environments filter threads and keep draft permissions separate',async({page},info)=>{
   await page.setViewportSize({width:420,height:480});await ready(page,'/?scenario=environments');
   const filter=page.getByRole('combobox',{name:'Filter by environment'});
