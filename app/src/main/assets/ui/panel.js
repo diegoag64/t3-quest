@@ -143,7 +143,10 @@
     const folds=new Map(),hidden=new Set();
     for(const [id,rows] of groups){const run=runs.get(id);if(!run||!['completed','failed'].includes(run.status)||rows.some(r=>r.item.streaming))continue;
       const last=rows.findLast(r=>r.item.type==='assistant_message');if(!last)continue;finalIds.add(last.id);
-      const folded=rows.filter(r=>r.id!==last.id&&!['user_message','notification','error','user_input_request','approval_request','secret_request','proposed_plan'].includes(r.item.type)&&!failedItem(r.item)&&!['running','inProgress'].includes(r.item.status)&&(r.item.type!=='checkpoint'||r.item.files?.length));
+      // Match T3's turn fold: earlier command failures belong to the work behind
+      // the final reply. Failures arriving after that reply still stay visible.
+      const terminalIndex=rows.indexOf(last);
+      const folded=rows.filter((r,index)=>r.id!==last.id&&!['user_message','notification','error','user_input_request','approval_request','secret_request','proposed_plan'].includes(r.item.type)&&(index<terminalIndex||!failedItem(r.item))&&!['running','inProgress'].includes(r.item.status)&&(r.item.type!=='checkpoint'||r.item.files?.length));
       if(folded.length){folds.set(folded[0].id,{rows:folded,run});folded.forEach(r=>hidden.add(r.id));}
     }
     let pending=[];const flush=()=>{if(pending.length){nodes.push(workGroup(pending,runs.get(pending[0].item.runId)));pending=[];}};

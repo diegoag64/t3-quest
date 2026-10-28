@@ -41,17 +41,35 @@ test('switching to an uncached child clears the previous thread context',async({
   await expect(page.getByText('Beginning of conversation')).toHaveCount(0);
   await page.screenshot({path:info.outputPath('uncached-offline.png')});
 });
-test('failed commands remain visible outside folded completed work',async({page},info)=>{
+for(const commandStatus of ['completed','failed'])test(`earlier command failures fold behind the final reply like T3 (${commandStatus})`,async({page},info)=>{
+  await ready(page,'/?mode=reader');
+  await page.evaluate(status=>{
+    const data=structuredClone(QuestTest.state.detail);
+    Object.assign(data.items.find(r=>r.id==='command').item,{status,exitCode:1,outputIndicatesFailure:true,output:'One test failed.'});
+    QuestView.receive({kind:'snapshot',threadId:'reader',payload:data});
+  },commandStatus);
+  await expect(page.locator('.timeline>.tool')).toHaveCount(0);
+  await expect(page.locator('.tool-label').filter({hasText:'npm test'})).toBeHidden();
+  await expect(page.locator('.timeline>.assistant')).toBeVisible();
+  await page.locator('.work').scrollIntoViewIfNeeded();
+  await page.screenshot({path:info.outputPath('folded-command-failure.png')});
+  await page.locator('.work>summary').click();
+  await page.locator('.work .tool>summary').filter({hasText:'npm test'}).click();
+  await expect(page.getByText('One test failed.')).toBeVisible();
+});
+test('failures after the final reply remain visible',async({page})=>{
   await ready(page,'/?mode=reader');
   await page.evaluate(()=>{
     const data=structuredClone(QuestTest.state.detail);
-    Object.assign(data.items.find(r=>r.id==='command').item,{exitCode:1,outputIndicatesFailure:true,output:'One test failed.'});
+    const command=structuredClone(data.items.find(r=>r.id==='command'));
+    command.id=command.item.id='late-failure';command.position=Math.max(...data.items.map(r=>r.position))+1;
+    Object.assign(command.item,{exitCode:1,outputIndicatesFailure:true,output:'A later check failed.'});
+    data.items.push(command);
     QuestView.receive({kind:'snapshot',threadId:'reader',payload:data});
   });
   await expect(page.locator('.timeline>.tool>summary')).toHaveText('npm test');
   await page.locator('.timeline>.tool>summary').click();
-  await expect(page.getByText('One test failed.')).toBeVisible();
-  await page.screenshot({path:info.outputPath('failed-command.png')});
+  await expect(page.getByText('A later check failed.')).toBeVisible();
 });
 test('stream updates preserve reading position, open work and draft selection',async({page})=>{
   await ready(page,'/?mode=reader&scenario=long');
