@@ -129,3 +129,12 @@ PR titles and View PR now open the live GitHub website in the existing centered 
 All 48 Node/DOM and 17 Chromium tests pass. Browser tests verify distinct PR/thread actions and draft preservation. Eight local Android tests pass: four URL-policy cases and four Robolectric browser cases covering section navigation, explicit return, blocked local URLs, absence of the T3Quest interface, load-error recovery, and explicit external-browser handoff. Android debug and instrumentation builds and lint pass with zero errors and 20 warnings. The refreshed PR and repository screenshots use synthetic data and were inspected.
 
 The native website is a separate WebView with no T3 JavaScript interface or laptop credentials. It uses its own GitHub web login; the live website retains normal GitHub controls. Tests do not sign in, load private PRs, post comments, or send thread messages. Live GitHub rendering, login compatibility, controller focus, and return navigation during Beat Saber still require a headset check. Robolectric verifies native logic without rendering the remote website, and browser screenshots show the PR summary UI rather than a headset capture.
+
+
+## Quest installation and live PR check
+
+Installed the app from commit `8b6bb68` on Quest 3 by USB, preserving settings and drafts. The device smoke test passed two open/back cycles with a 1000 by 780 CSS-pixel Layout SDK reader, about 510 pixels of visible history, working pagination, and unchanged parent task, display, bounds, and document.
+
+A read-only PR probe opened the public t3-quest PR on GitHub in the headset WebView, visited Conversation, Files, and Checks, verified that the website has no T3Quest interface, and returned to the same reader with its draft and scroll position preserved. The app-only screenshot was inspected locally. The installed compact sidebar also exposed 11 live linked PR cards, and its View PR action opened the browser. Private GitHub sign-in and in-song controller focus remain untested. No recording, message, or GitHub mutation was performed.
+
+The desktop integration test is pending a safe restart of the active Nightly session, which had running agents. A temporary desktop-mode bridge was prepared on port 8789 and stopped after the user deferred the restart. The working direct bridge remained on 8787; headset settings still use that connection. Actual desktop environment aggregation has not yet been claimed as verified.
