@@ -1,3 +1,4 @@
+import { normalizePullRequests } from './pull-requests.mjs';
 import { randomUUID } from 'node:crypto';
 
 export function normalizeOrigin(input) {
@@ -106,7 +107,7 @@ export function normalizeThread(thread, projects) {
     completedAt: thread.latestRunCompletedAt || null,
     pendingBackgroundTasks: thread.pendingBackgroundTasks || [],
     pendingRuntimeRequest: thread.pendingRuntimeRequest || null,
-    pullRequests: thread.pullRequests || [],
+    pullRequests: normalizePullRequests(thread),
     status,
     summary: String(thread.latestVisibleMessage?.text ?? '').slice(0, 600),
     updatedAt: thread.updatedAt,
