@@ -66,6 +66,22 @@ The packaging helper verifies the source revision, retains the installed server 
 
 If the panel says **Laptop connected · demo**, the bridge is reachable but has no T3 pairing. Run `npm run pair`, stop the bridge with Ctrl+C, and restart `npm run connect:quest`.
 
+For a desktop link such as `t3code://app/pair#token=YOUR_CODE`, you can specify the server first and paste the link at the prompt:
+
+```sh
+npm run pair -- --server http://127.0.0.1:3773
+```
+
+Use the address of the T3 server that created the link. The `app` part of the desktop URL is not a network address. The default address above is for T3 on the same laptop.
+
+The helper also accepts a quoted URL argument:
+
+```sh
+npm run pair -- --server http://127.0.0.1:3773 't3code://app/pair#token=YOUR_CODE'
+```
+
+Prefer the prompt to keep the token out of shell history. Add `--write` only when you want to enable reviewed message sending and the pairing permits it. Failed pairing leaves the previous saved session intact. Desktop mode uses its existing environment connections and does not need this command.
+
 If macOS asks for Node network access, allow access on the private network you are using.
 
 To choose an address without a prompt, run:
