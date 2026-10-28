@@ -367,7 +367,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
             boolean hasAudio = new File(getFilesDir(), "probe.wav").length() > 44;
             replay.setEnabled(hasAudio && !LabState.recording); transcribe.setEnabled(hasAudio && !LabState.running && !transcribing);
             for (Button control : new Button[]{start, stop, replay, transcribe, checkConnection, disconnect}) control.setAlpha(control.isEnabled() ? 1f : 0.4f);
-            String next = LabState.threads.toString() + LabState.settledThreads.toString() + configured + LabState.connection;
+            String next = LabState.threads.toString() + LabState.settledThreads.toString() + configured + LabState.connection + (SystemClock.elapsedRealtime()-LabState.lastBridgeSuccess<10000);
             if (!next.equals(renderedThreads)) { renderedThreads = next; renderThreads(); }
             if (configured && !LabState.running && SystemClock.elapsedRealtime() - lastPollAt >= 2500) checkBridge(false);
             handler.postDelayed(this, 750);
@@ -376,7 +376,12 @@ public class MainActivity extends androidx.activity.ComponentActivity {
 
     private void renderThreads() {
         JSONObject data = new JSONObject();
-        try { data.put("threads",LabState.threads); data.put("settledThreads",LabState.settledThreads); } catch(Exception ignored) { }
+        try {
+            data.put("threads",LabState.threads); data.put("settledThreads",LabState.settledThreads);
+            boolean connected=LabState.connection.endsWith(" · Connected")&&LabState.lastBridgeSuccess>0&&SystemClock.elapsedRealtime()-LabState.lastBridgeSuccess<10000;
+            data.put("connected",connected);
+            data.put("connectionLabel",connected?"Synced from your laptop":LabState.threads.length()>0?"Offline · showing last received threads":"Connect your laptop to load threads");
+        } catch(Exception ignored) { }
         threadWeb.send("list",null,data);
         if(readingHost!=null)readingHost.sendList(data);
     }

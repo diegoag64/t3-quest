@@ -1,4 +1,5 @@
 import { normalizePullRequests } from './pull-requests.mjs';
+import { sortSidebarThreads } from './thread-order.mjs';
 import { randomUUID } from 'node:crypto';
 
 export function normalizeOrigin(input) {
@@ -102,6 +103,9 @@ export function normalizeThread(thread, projects) {
     runtimeMode: thread.runtimeMode || '',
     settledAt: thread.settledAt || null,
     pinnedAt: thread.pinnedAt || null,
+    pinOrderKey: thread.pinOrderKey ?? null,
+    createdAt: thread.createdAt || null,
+    unsettledAt: thread.unsettledAt || null,
     activeOrderKey: thread.activeOrderKey || null,
     lastVisitedAt: thread.lastVisitedAt || null,
     completedAt: thread.latestRunCompletedAt || null,
@@ -154,7 +158,7 @@ export class ThreadMonitor {
     const liveIds = new Set(threads.map(thread => thread.id));
     for (const id of this.previous.keys()) if (!liveIds.has(id)) this.previous.delete(id);
     this.events = this.events.slice(-100);
-    this.threads = threads.sort((a, b) => String(b.updatedAt ?? '').localeCompare(String(a.updatedAt ?? '')));
+    this.threads = sortSidebarThreads(threads);
     this.initialized = true;
   }
 }

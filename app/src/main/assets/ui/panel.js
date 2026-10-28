@@ -1,7 +1,7 @@
 (() => {
   'use strict';
   const app = document.getElementById('app');
-  const state = { mode:'list', threads:[], settledThreads:[], selected:null, detail:null, items:[], historyLoaded:false, query:'', project:'', loadingHistory:false, signature:'', loadedItems:new Map(), composer:null, sidebarTab:'threads', repository:null, repositoryLoading:false, repositoryError:'' };
+  const state = { mode:'list', threads:[], settledThreads:[], selected:null, detail:null, items:[], historyLoaded:false, query:'', project:'', loadingHistory:false, signature:'', loadedItems:new Map(), composer:null, sidebarTab:'threads', repository:null, repositoryLoading:false, repositoryError:'', connectionLabel:'Synced from your laptop', connected:true };
   const colors={gray:'#9ca3af',red:'#f87171',orange:'#fb923c',amber:'#fbbf24',yellow:'#facc15',lime:'#a3e635',green:'#4ade80',emerald:'#34d399',teal:'#2dd4bf',cyan:'#22d3ee',sky:'#38bdf8',blue:'#60a5fa',indigo:'#818cf8',violet:'#a78bfa',purple:'#c084fc',fuchsia:'#e879f9',pink:'#f472b6',rose:'#fb7185'};
   const paths={back:'m15 18-6-6 6-6',sidebar:'M9 3v18M3 3h18v18H3z',search:'m21 21-5-5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0',check:'m8 12 3 3 5-6M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0',circle:'M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0',alert:'M12 8v5m0 4h.01M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0',lock:'M6 10h12v11H6zM8 10V6a4 4 0 0 1 8 0v4',terminal:'m4 6 6 6-6 6m9 0h7',branch:'M6 3v12a6 6 0 0 0 12 0V9M3 5a3 3 0 1 0 6 0 3 3 0 1 0-6 0M15 6a3 3 0 1 0 6 0 3 3 0 1 0-6 0',file:'M14 2H5v20h14V7zM14 2v6h5',spark:'m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z',gauge:'M4 18a9 9 0 1 1 16 0M12 14l4-6',arrow:'m6 12 6-6 6 6M12 6v14',chevron:'m9 6 6 6-6 6'};
   function el(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e;}
@@ -78,6 +78,7 @@
   function renderLists(){
     for(const aside of document.querySelectorAll('.sidebar')){
       const select=aside.querySelector('select');
+      const footer=aside.querySelector('.sidebar-footer');footer.textContent=state.connectionLabel;footer.classList.toggle('offline',!state.connected);
       const projects=[...new Set([...state.threads,...state.settledThreads].map(t=>t.project))].sort();
       select.replaceChildren(new Option('All projects',''),...projects.map(p=>new Option(p,p)));
       if(projects.includes(state.project))select.value=state.project;else state.project='';
@@ -95,7 +96,7 @@
         }
         if(!seen.size)list.append(el('div','empty',state.query?'No matching pull requests.':'No linked pull requests. Link a PR to a thread in T3 Code.'));
       }else{
-        const active=state.threads.filter(filter);active.forEach(t=>list.append(row(t)));
+        const active=state.threads.filter(filter);const pinned=active.filter(t=>t.pinnedAt),unpinned=active.filter(t=>!t.pinnedAt);if(pinned.length){list.append(el('div','section-label','Pinned'));pinned.forEach(t=>list.append(row(t)));if(unpinned.length)list.append(el('div','section-label','Threads'));}unpinned.forEach(t=>list.append(row(t)));
         if(!active.length)list.append(el('div','empty',state.query?'No matching threads.':'No active threads. Connect your laptop or check Settled below.'));
         const settled=state.settledThreads.filter(filter);
         if(settled.length){const group=el('details','settled');group.open=!!open||!!state.query;group.append(el('summary','',`Settled  ·  ${settled.length}`));settled.forEach(t=>group.append(row(t)));list.append(group);}
@@ -178,7 +179,7 @@
     if(atBottom)scroller.scrollTop=scroller.scrollHeight;else{const replacement=[...timeline.querySelectorAll('[data-entry-id]')].find(n=>n.dataset.entryId===anchorId);scroller.scrollTop=oldTop;if(replacement)scroller.scrollTop+=replacement.getBoundingClientRect().top-top-offset;document.querySelector('.new-messages').hidden=false;}
   }
   function mergeItems(oldRows,newRows){const map=new Map(oldRows.map(r=>[r.id,r]));for(const r of newRows)map.set(r.id,r);return [...map.values()].sort((a,b)=>a.position-b.position);}
-  function receive(event){const data=event.payload||{};if(event.kind==='list'){state.threads=data.threads||[];state.settledThreads=data.settledThreads||[];renderLists();return;}
+  function receive(event){const data=event.payload||{};if(event.kind==='list'){state.threads=data.threads||[];state.settledThreads=data.settledThreads||[];state.connectionLabel=data.connectionLabel||'Synced from your laptop';state.connected=data.connected!==false;renderLists();return;}
     if(event.threadId&&event.threadId!==state.selected)return;
     if(event.kind==='repository'){state.repository=data;state.repositoryLoading=false;state.repositoryError='';renderPullRequests();return;}
     if(event.kind==='repositoryError'){state.repositoryLoading=false;state.repositoryError='Could not refresh repository activity. Retry when the laptop is connected.';renderPullRequests();return;}

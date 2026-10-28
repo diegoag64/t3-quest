@@ -40,3 +40,4 @@ html,body{height:100%;overflow:hidden}#app{height:100%}
 .repository-title{font-size:14px;font-weight:500;margin:20px 0 4px}.repository-section h4{font-size:12px;color:#aaa;font-weight:500;margin:18px 0 6px}
 .repository-section .pr-card{padding:10px 0}.issue-card{padding:8px 0;border-bottom:1px solid #202020}
 .issue-title{text-align:left;min-height:40px;font-size:13px;line-height:1.5;padding:0;color:#ddd}
+.section-label{padding:10px 10px 5px;color:#818181;font-size:11px}.sidebar-footer.offline{color:#d5b47b}

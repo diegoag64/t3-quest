@@ -61,3 +61,20 @@ test('repository view shows open work and handles failure without replacing the 
   await page.evaluate(()=>QuestView.receive({kind:'repository',threadId:'other',payload:{repositories:[]}}));
   await expect(page.getByRole('button',{name:'#44 Improve microphone feedback'})).toBeVisible();
 });
+test('compact offline and empty states explain the data source',async({page},info)=>{
+  await page.setViewportSize({width:420,height:480});await ready(page);
+  await page.evaluate(()=>QuestView.receive({kind:'list',payload:{threads:QuestTest.state.threads,connected:false,connectionLabel:'Offline · showing last received threads'}}));
+  await expect(page.locator('.sidebar-footer')).toHaveText('Offline · showing last received threads');
+  await expect(page.locator('.thread-row').first()).toBeVisible();
+  await page.screenshot({path:info.outputPath('offline-list.png')});
+  await ready(page,'/?scenario=empty');await expect(page.getByText(/No active threads/)).toBeVisible();
+  await page.getByRole('button',{name:'Pull requests',exact:true}).click();await expect(page.getByText(/No linked pull requests/)).toBeVisible();
+});
+test('narrow PR drawer stays in bounds and restores the reader',async({page},info)=>{
+  await page.setViewportSize({width:420,height:480});await ready(page,'/?mode=reader');
+  await page.getByRole('button',{name:'Show pull requests'}).click();
+  await expect(page.getByRole('button',{name:'Close',exact:true})).toBeInViewport();await noOverflow(page);
+  const box=await page.locator('.pr-panel').boundingBox();expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(420);
+  await page.screenshot({path:info.outputPath('narrow-prs.png')});
+  await page.getByRole('button',{name:'Close',exact:true}).click();await expect(page.getByRole('textbox',{name:'Message draft'})).toBeInViewport();
+});
