@@ -93,6 +93,10 @@ export function normalizeThread(thread, projects) {
   const projectName = typeof project === 'string' ? project : project?.title || project?.name || 'Project';
   return {
     id: thread.id,
+    environmentId:thread.environmentId,
+    environmentLabel:thread.environmentLabel,
+    environmentConnected:thread.environmentConnected,
+    canSend:thread.canSend,
     title: thread.title || 'Untitled thread',
     project: projectName,
     projectId: thread.projectId,

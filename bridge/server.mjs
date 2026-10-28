@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { networkInterfaces } from 'node:os';
 import { canOperate, createMessageSender, validateMessage } from './thread-send.mjs';
 import { createRepositoryReader } from './repository.mjs';
+import {startDesktopLink,createDesktopSource} from './desktop.mjs';
 import { ThreadMonitor, readShell } from './t3.mjs';
 import { readThreadData, threadDetail, historyPage, validateId, readTurnItem } from './thread-view.mjs';
 
@@ -145,13 +146,22 @@ export async function loadBridgeToken(directory = join(ROOT, '.state')) {
 
 export async function main() {
   try { process.loadEnvFile(join(ROOT,'.env')); } catch(error) { if(error.code!=='ENOENT')throw error; }
+  const host = process.env.BRIDGE_HOST || '127.0.0.1';
+  const port = Number(process.env.BRIDGE_PORT || 8787);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Invalid BRIDGE_PORT');
 
   const directory = join(ROOT, '.state');
   const token = await loadBridgeToken(directory);
-  const session = await privateJson(join(directory, 't3-session.json'));
+  const desktopMode=process.env.T3_QUEST_SOURCE==='desktop';
+  const session = desktopMode ? null : await privateJson(join(directory, 't3-session.json'));
+  const desktopConfig=desktopMode?await privateJson(join(directory,'desktop-link.json')):null;
+  if(desktopMode&&!desktopConfig)throw Error('Run npm run setup:desktop first.');
+  const desktopLink=desktopConfig?await startDesktopLink({token:desktopConfig.token,port:Number(new URL(desktopConfig.url).port)}):null;
+  const desktop=desktopLink?createDesktopSource(desktopLink):null;
+  const connectedSource=Boolean(desktop||session);
   const monitor = new ThreadMonitor();
   let canSend = false, capabilitiesAt = 0;
-  let status = session ? 'Connecting to T3' : 'Connected';
+  let status = connectedSource ? 'Connecting to T3' : 'Connected';
   let updatedAt = null;
   let timer;
   let closed = false;
@@ -161,15 +171,18 @@ export async function main() {
   };
   async function poll() {
     try {
-      monitor.apply(await readShell(session));
-      if(Date.now()-capabilitiesAt>30000){canSend=await canOperate(session);capabilitiesAt=Date.now();}
+      monitor.apply(desktop?await desktop.readShell():await readShell(session));
+      if(desktop)canSend=desktop.canSend;
+      else if(Date.now()-capabilitiesAt>30000){canSend=await canOperate(session);capabilitiesAt=Date.now();}
       status = 'Connected'; updatedAt = new Date().toISOString();
     } catch (error) {
+      if(desktop){canSend=false;monitor.apply(desktop.disconnected());}
       status = error.message.startsWith('T3 HTTP') || error.message.startsWith('Unsupported T3') ? error.message : 'T3 unreachable';
     } finally { if (!closed) timer = setTimeout(poll, 2000); }
   }
   const detailCache = new Map();
   async function threadRead(id, {cursor, itemId}) {
+    if(desktop)return desktop.read(id,{cursor,itemId});
     if(itemId)return readTurnItem(session,id,itemId);
     const key = id + ':bounded';
     let data;
@@ -187,17 +200,18 @@ export async function main() {
     return threadDetail(data, shellThread, project);
   }
   const server = makeServer({
-    token, threadRead: session ? threadRead : null,
-    repositoryRead: session ? createRepositoryReader(()=>monitor.shell.threads) : null,
-    threadSend: session ? createMessageSender(session,join(directory,'message-receipts')) : null,
+    token, threadRead: connectedSource ? threadRead : null,
+    repositoryRead: connectedSource ? createRepositoryReader(()=>monitor.shell.threads) : null,
+    threadSend: desktop?createMessageSender({origin:'desktop-companion'},join(directory,'message-receipts'),(_session,id,input)=>desktop.send(id,input)):session ? createMessageSender(session,join(directory,'message-receipts')) : null,
     state: () => ({
-      mode: session ? (canSend ? 't3-connected' : 't3-read-only') : 'demo', status, updatedAt, canSend,
-      threads: session ? monitor.threads : demo.threads,
-      settledThreads: session ? monitor.settledThreads : [],
-      events: session ? monitor.events : demo.events,
+      mode: connectedSource ? (canSend ? 't3-connected' : 't3-read-only') : 'demo', status, updatedAt, canSend,
+      source:desktop?'desktop':'direct',environments:desktop?.environments||[],
+      threads: connectedSource ? monitor.threads : demo.threads,
+      settledThreads: connectedSource ? monitor.settledThreads : [],
+      events: connectedSource ? monitor.events : demo.events,
       transcriptionConfigured: Boolean(process.env.TRANSCRIPTION_URL),
     }),
-    demoComplete: session ? null : () => {
+    demoComplete: connectedSource ? null : () => {
       demo.threads[0].status = 'completed';
       demo.threads[0].summary = 'Simulated completion received from the computer.';
       demo.events.push({ id: randomUUID(), title: 'Authentication tests', message: 'Demo thread finished', time: new Date().toISOString() });
@@ -207,23 +221,20 @@ export async function main() {
   });
   server.requestTimeout = 90_000;
   server.headersTimeout = 10_000;
-  const host = process.env.BRIDGE_HOST || '127.0.0.1';
-  const port = Number(process.env.BRIDGE_PORT || 8787);
-  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Invalid BRIDGE_PORT');
-  await new Promise((resolve, reject) => {
+  try { await new Promise((resolve, reject) => {
     server.once('error', reject);
     server.listen(port, host, resolve);
-  });
-  console.log(`T3 Quest bridge: http://${host}:${port} (${session ? 'T3 connected' : 'demo'})`);
+  }); } catch(error) { await desktopLink?.close(); throw error; }
+  console.log(`T3 Quest bridge: http://${host}:${port} (${desktop ? 'T3 desktop environments' : session ? 'T3 direct connection' : 'demo'})`);
   console.log('Bridge access token: read .state/bridge-token and paste it into the headset app.');
   if (host === '0.0.0.0') {
     for (const values of Object.values(networkInterfaces())) {
       for (const item of values || []) if (item.family === 'IPv4' && !item.internal) console.log(`Possible headset address: http://${item.address}:${port}`);
     }
   }
-  if (session) void poll();
+  if (connectedSource) void poll();
   const stop = () => { closed = true; clearTimeout(timer); server.close(); server.closeAllConnections(); };
-  server.on('close', () => { closed = true; clearTimeout(timer); process.off('SIGTERM', stop); process.off('SIGINT', stop); });
+  server.on('close', () => { closed = true; clearTimeout(timer); void desktopLink?.close(); process.off('SIGTERM', stop); process.off('SIGINT', stop); });
   process.on('SIGTERM', stop); process.on('SIGINT', stop);
   return server;
 }

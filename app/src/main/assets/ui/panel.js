@@ -1,7 +1,7 @@
 (() => {
   'use strict';
   const app = document.getElementById('app');
-  const state = { mode:'list', threads:[], settledThreads:[], selected:null, detail:null, items:[], historyLoaded:false, query:'', project:'', loadingHistory:false, signature:'', loadedItems:new Map(), composer:null, sidebarTab:'threads', repository:null, repositoryLoading:false, repositoryError:'', connectionLabel:'Synced from your laptop', connected:true };
+  const state = { mode:'list', threads:[], settledThreads:[], selected:null, detail:null, items:[], historyLoaded:false, query:'', project:'', environment:'', loadingHistory:false, signature:'', loadedItems:new Map(), composer:null, sidebarTab:'threads', repository:null, repositoryLoading:false, repositoryError:'', connectionLabel:'Synced from your laptop', connected:true };
   const colors={gray:'#9ca3af',red:'#f87171',orange:'#fb923c',amber:'#fbbf24',yellow:'#facc15',lime:'#a3e635',green:'#4ade80',emerald:'#34d399',teal:'#2dd4bf',cyan:'#22d3ee',sky:'#38bdf8',blue:'#60a5fa',indigo:'#818cf8',violet:'#a78bfa',purple:'#c084fc',fuchsia:'#e879f9',pink:'#f472b6',rose:'#fb7185'};
   const paths={back:'m15 18-6-6 6-6',sidebar:'M9 3v18M3 3h18v18H3z',search:'m21 21-5-5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0',check:'m8 12 3 3 5-6M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0',circle:'M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0',alert:'M12 8v5m0 4h.01M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0',lock:'M6 10h12v11H6zM8 10V6a4 4 0 0 1 8 0v4',terminal:'m4 6 6 6-6 6m9 0h7',branch:'M6 3v12a6 6 0 0 0 12 0V9M3 5a3 3 0 1 0 6 0 3 3 0 1 0-6 0M15 6a3 3 0 1 0 6 0 3 3 0 1 0-6 0',file:'M14 2H5v20h14V7zM14 2v6h5',spark:'m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z',gauge:'M4 18a9 9 0 1 1 16 0M12 14l4-6',arrow:'m6 12 6-6 6 6M12 6v14',chevron:'m9 6 6 6-6 6'};
   function el(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e;}
@@ -13,10 +13,10 @@
   function identity(name,override){const normalized=String(name||'Project').normalize('NFKC').trim();const words=normalized.match(/[\p{L}\p{N}]+/gu)||[];const glyphs=Array.from(words[0]||'PR');const second=glyphs.slice(1).find(g=>/\p{N}/u.test(g))||(words.length>1?Array.from(words.at(-1))[0]:glyphs.at(-1))||glyphs[0];let index=0;for(const glyph of normalized.toLocaleLowerCase('en-US')||'project')index=(index*31+glyph.codePointAt(0))%Object.keys(colors).length;return {text:override?.kind==='monogram'?override.text:override?.kind==='emoji'?override.emoji:Array.from((glyphs[0]+second).toUpperCase()).slice(0,2).join(''),color:colors[override?.color]||Object.values(colors)[index]};}
   function badge(t){const id=identity(t.project,t.projectIcon);const b=el('span','badge',id.text);b.style.color=id.color;b.style.backgroundColor=id.color+'24';return b;}
   function projectLabel(t){const p=el('span','project-label');p.append(badge(t),el('span','truncate',t.project||'Project'));return p;}
-  function status(t){if(t.pendingRuntimeRequest){const approval=/approval|permission/.test(t.pendingRuntimeRequest.kind||'');return {label:approval?'Approval':'Input',cls:approval?'approval':'input',icon:'alert'};}if(t.status==='needs-you')return {label:'Input',cls:'input',icon:'alert'};if(t.status==='running')return {label:'Working',cls:'working',icon:'circle'};if(t.status==='waiting')return {label:'Waiting',cls:'',icon:'circle'};if(t.status==='failed')return {label:'Failed',cls:'failed',icon:'alert'};if(t.status==='completed')return {label:'Done',cls:'done',icon:'check'};if(t.status==='interrupted')return {label:'Stopped',cls:'',icon:'circle'};return {label:'',cls:'',icon:'circle'};}
+  function status(t){if(t.environmentConnected===false)return {label:'Offline',cls:'',icon:'circle'};if(t.pendingRuntimeRequest){const approval=/approval|permission/.test(t.pendingRuntimeRequest.kind||'');return {label:approval?'Approval':'Input',cls:approval?'approval':'input',icon:'alert'};}if(t.status==='needs-you')return {label:'Input',cls:'input',icon:'alert'};if(t.status==='running')return {label:'Working',cls:'working',icon:'circle'};if(t.status==='waiting')return {label:'Waiting',cls:'',icon:'circle'};if(t.status==='failed')return {label:'Failed',cls:'failed',icon:'alert'};if(t.status==='completed')return {label:'Done',cls:'done',icon:'check'};if(t.status==='interrupted')return {label:'Stopped',cls:'',icon:'circle'};return {label:'',cls:'',icon:'circle'};}
   function statusNode(t){const v=status(t),n=el('span','status '+v.cls);if(v.label)n.append(icon(v.icon),document.createTextNode(v.label));return n;}
-  function row(t){const b=button('', 'thread-row'+(t.id===state.selected?' active':''),()=>request('openThread',{id:t.id}));b.title=t.title;b.dataset.threadId=t.id;const top=el('div','row-top');top.append(projectLabel(t),statusNode(t));const title=el('div','row-title');title.append(el('span','truncate',t.title||'Untitled'));b.append(top,title);if(t.branch){const branch=el('div','row-branch');branch.append(el('span','truncate',t.branch));if(t.pullRequests?.length)branch.append(el('span','pr-inline','#'+t.pullRequests[0].number));branch.append(provider(t.provider));b.append(branch);}else title.append(provider(t.provider));return b;}
-  function makeSidebar(){const aside=el('aside','sidebar');const search=el('div','search-row');const field=el('input');field.type='search';field.placeholder='Search';field.setAttribute('aria-label','Search threads');field.value=state.query;field.oninput=()=>{state.query=field.value;renderLists();};const select=el('select','project-select');select.setAttribute('aria-label','Filter by project');select.onchange=()=>{state.project=select.value;renderLists();};search.append(icon('search'),field,select);const tabs=el('div','sidebar-tabs');for(const [key,label] of [['threads','Threads'],['prs','Pull requests']]){const tab=button(label,'sidebar-tab',()=>{state.sidebarTab=key;renderLists();});tab.dataset.tab=key;tabs.append(tab);}aside.append(search,tabs,el('div','sidebar-list'),el('div','sidebar-footer','Synced from your laptop'));return aside;}
+  function row(t){const b=button('', 'thread-row'+(t.id===state.selected?' active':''),()=>request('openThread',{id:t.id}));b.title=t.title;b.dataset.threadId=t.id;const top=el('div','row-top');top.append(projectLabel(t),statusNode(t));if(t.environmentLabel)top.querySelector('.project-label').append(el('span','environment-label truncate',t.environmentLabel));const title=el('div','row-title');title.append(el('span','truncate',t.title||'Untitled'));b.append(top,title);if(t.branch){const branch=el('div','row-branch');branch.append(el('span','truncate',t.branch));if(t.pullRequests?.length)branch.append(el('span','pr-inline','#'+t.pullRequests[0].number));branch.append(provider(t.provider));b.append(branch);}else title.append(provider(t.provider));return b;}
+  function makeSidebar(){const aside=el('aside','sidebar');const search=el('div','search-row');const field=el('input');field.type='search';field.placeholder='Search';field.setAttribute('aria-label','Search threads');field.value=state.query;field.oninput=()=>{state.query=field.value;renderLists();};const select=el('select','project-select');select.setAttribute('aria-label','Filter by project');select.onchange=()=>{state.project=select.value;renderLists();};search.append(icon('search'),field,select);const tabs=el('div','sidebar-tabs');for(const [key,label] of [['threads','Threads'],['prs','Pull requests']]){const tab=button(label,'sidebar-tab',()=>{state.sidebarTab=key;renderLists();});tab.dataset.tab=key;tabs.append(tab);}const environment=el('select','environment-select');environment.setAttribute('aria-label','Filter by environment');environment.onchange=()=>{state.environment=environment.value;renderLists();};aside.append(search,tabs,environment,el('div','sidebar-list'),el('div','sidebar-footer','Synced from your laptop'));return aside;}
   function prCard(pr,threadId){
     const card=el('article','pr-card');
     card.dataset.prSyncedAt=pr.syncedAt||'';
@@ -94,18 +94,20 @@
   }
   function renderLists(){
     for(const aside of document.querySelectorAll('.sidebar')){
-      const select=aside.querySelector('select');
+      const select=aside.querySelector('.project-select');
+      const environment=aside.querySelector('.environment-select');const environments=new Map([...state.threads,...state.settledThreads].filter(t=>t.environmentId).map(t=>[t.environmentId,t.environmentLabel||'Environment']));
+      environment.replaceChildren(new Option('All environments',''),...[...environments].map(([id,label])=>new Option(label,id)));environment.hidden=environments.size<2;if(!environments.has(state.environment))state.environment='';environment.value=state.environment;
       const footer=aside.querySelector('.sidebar-footer');footer.textContent=state.connectionLabel;footer.classList.toggle('offline',!state.connected);
       const projects=[...new Set([...state.threads,...state.settledThreads].map(t=>t.project))].sort();
       select.replaceChildren(new Option('All projects',''),...projects.map(p=>new Option(p,p)));
       if(projects.includes(state.project))select.value=state.project;else state.project='';
       for(const tab of aside.querySelectorAll('.sidebar-tab'))tab.setAttribute('aria-pressed',String(tab.dataset.tab===state.sidebarTab));
       const list=aside.querySelector('.sidebar-list');const open=list.querySelector('.settled')?.open;const scroll=list.scrollTop;list.replaceChildren();
-      const filter=t=>(!state.project||t.project===state.project)&&[t.title,t.project,t.branch].join(' ').toLowerCase().includes(state.query.toLowerCase());
+      const filter=t=>(!state.environment||t.environmentId===state.environment)&&(!state.project||t.project===state.project)&&[t.title,t.project,t.branch,t.environmentLabel].join(' ').toLowerCase().includes(state.query.toLowerCase());
       if(state.sidebarTab==='prs'){
         const seen=new Set();
         for(const t of [...state.threads,...state.settledThreads]){
-          if(state.project&&t.project!==state.project)continue;
+          if((state.project&&t.project!==state.project)||(state.environment&&t.environmentId!==state.environment))continue;
           for(const pr of t.pullRequests||[]){
             if(seen.has(pr.url)||![pr.title,pr.repository,pr.number,t.title].join(' ').toLowerCase().includes(state.query.toLowerCase()))continue;
             seen.add(pr.url);list.append(prCard(pr,t.id));
@@ -169,19 +171,19 @@
     controls.append(model,mic,stop,cancel,discard,send);composer.append(input,hint,controls);return composer;
   }
   function updateComposer(){
-    const c=document.querySelector('.composer');if(!c)return;const d=state.composer||{};const status=d.status||'draft';
+    const c=document.querySelector('.composer');if(!c)return;const d=state.composer||{};const thread=[...state.threads,...state.settledThreads].find(t=>t.id===state.selected)||state.detail?.thread;const canSend=d.canSend&&thread?.canSend!==false&&thread?.environmentConnected!==false;const status=d.status||'draft';
     const recording=status==='recording',transcribing=status==='transcribing',sending=status==='sending',uncertain=status==='uncertain';const busy=recording||transcribing||sending;
     const input=c.querySelector('.draft-input');if(input.value!==(d.text||'')&&(document.activeElement!==input||busy||uncertain||status==='sent'))input.value=d.text||'';
     input.readOnly=busy||uncertain;
     const mic=c.querySelector('.voice-start');mic.hidden=recording||transcribing;mic.disabled=sending||uncertain||!d.canRecord||d.otherRecording;
     c.querySelector('.voice-stop').hidden=!recording;c.querySelector('.voice-cancel').hidden=!(recording||transcribing);
     const discard=c.querySelector('.draft-discard');discard.hidden=!input.value;discard.disabled=busy;
-    const send=c.querySelector('.draft-send');send.disabled=busy||!d.canSend||!input.value.trim();send.textContent=sending?'Sending…':uncertain?'Retry send':'Send';
-    c.querySelector('.voice-hint').textContent=d.error||(recording?`Recording · ${d.seconds||0}s / 60s · you can return focus to Beat Saber`:transcribing?'Transcribing… Review the text before sending.':sending?'Sending to this thread…':status==='sent'?'Sent to T3. It will queue if the thread is busy.':!d.canSend?'Read-only connection · enable sending in Connect.':!d.canRecord?'Set up voice in Connect, or type a message.':'Tap the microphone, speak, then stop and review. Send queues behind active work.');
+    const send=c.querySelector('.draft-send');send.disabled=busy||!canSend||!input.value.trim();send.textContent=sending?'Sending…':uncertain?'Retry send':'Send';
+    c.querySelector('.voice-hint').textContent=d.error||(recording?`Recording · ${d.seconds||0}s / 60s · you can return focus to Beat Saber`:transcribing?'Transcribing… Review the text before sending.':sending?'Sending to this thread…':status==='sent'?'Sent to T3. It will queue if the thread is busy.':!canSend?(thread?.environmentConnected===false?'Environment offline · reconnect it in T3 Code.':thread?.environmentId?'Read-only environment · check permissions in T3 Code.':'Read-only connection · enable sending in Connect.'):!d.canRecord?'Set up voice in Connect, or type a message.':'Tap the microphone, speak, then stop and review. Send queues behind active work.');
     c.classList.toggle('recording',recording);
   }
   function updateChrome(t){
-    const bread=document.querySelector('.breadcrumb');bread.replaceChildren(projectLabel(t),el('span','muted slash','/'),el('span','title truncate',t.title));
+    const bread=document.querySelector('.breadcrumb');bread.replaceChildren(projectLabel(t),el('span','muted slash','/'),el('span','title truncate',t.title));if(t.environmentLabel)bread.title=t.environmentLabel;
     const footer=document.querySelector('.footer');const composer=footer.querySelector('.composer')||makeComposer();
     let activity='';if(t.pendingBackgroundTasks?.length)activity=`Running ${t.pendingBackgroundTasks.length} background task${t.pendingBackgroundTasks.length===1?'':'s'}`;
     if(t.settledAt)activity+=(activity?' · ':'')+'Settled';else activity+=(activity?' · ':'')+(status(t).label||'Idle');
@@ -197,7 +199,7 @@
     if(atBottom)scroller.scrollTop=scroller.scrollHeight;else{const replacement=[...timeline.querySelectorAll('[data-entry-id]')].find(n=>n.dataset.entryId===anchorId);scroller.scrollTop=oldTop;if(replacement)scroller.scrollTop+=replacement.getBoundingClientRect().top-top-offset;document.querySelector('.new-messages').hidden=false;}
   }
   function mergeItems(oldRows,newRows){const map=new Map(oldRows.map(r=>[r.id,r]));for(const r of newRows)map.set(r.id,r);return [...map.values()].sort((a,b)=>a.position-b.position);}
-  function receive(event){const data=event.payload||{};if(event.kind==='list'){state.threads=data.threads||[];state.settledThreads=data.settledThreads||[];state.connectionLabel=data.connectionLabel||'Synced from your laptop';state.connected=data.connected!==false;renderLists();return;}
+  function receive(event){const data=event.payload||{};if(event.kind==='list'){state.threads=data.threads||[];state.settledThreads=data.settledThreads||[];state.connectionLabel=data.connectionLabel||'Synced from your laptop';state.connected=data.connected!==false;renderLists();updateComposer();return;}
     if(event.threadId&&event.threadId!==state.selected)return;
     if(event.kind==='resume'){state.loadingHistory=false;state.repositoryLoading=false;renderPullRequests();if(state.detail)renderTimeline();return;}
     if(event.kind==='repository'){state.repository=data;state.repositoryLoading=false;state.repositoryError='';renderPullRequests();return;}

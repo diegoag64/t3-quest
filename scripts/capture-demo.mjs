@@ -38,7 +38,11 @@ try{
   await expect(page.getByRole('heading',{name:'Open issues'})).toBeVisible();
   await page.locator('.pr-list').evaluate(n=>n.scrollTop=n.scrollHeight);
   await capture('repository-activity');
-  console.log('Saved five synthetic demo screenshots to docs/screenshots. No audio or messages were sent.');
+  await page.setViewportSize({width:420,height:480});
+  await page.goto(`http://127.0.0.1:${server.address().port}/?scenario=environments`);
+  await page.waitForFunction(()=>window.previewReady);
+  await capture('desktop-environments');
+  console.log('Saved six synthetic demo screenshots to docs/screenshots. No audio or messages were sent.');
 }finally{
   await browser?.close();
   await new Promise(resolve=>server.close(resolve));

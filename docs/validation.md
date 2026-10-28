@@ -109,3 +109,14 @@ These overnight changes are not installed or checked on the headset. The install
 Version 0.6.0 (code 8) builds both debug and instrumentation APKs. Final lint has zero errors and 17 warnings. The test suites pass 43 Node/DOM cases and 16 Chromium cases. The final reader pass covers uncached child navigation, visible failed commands, resolved requests, history metadata changes, reconnection, canceled request recovery, streaming scroll position, draft selection, and cached PR aging. Screenshots were inspected at compact, wide, narrow, and short fallback sizes. The build is not installed on Quest.
 
 The restarted laptop bridge returns HTTP 200 for authenticated state and repository reads. It reports Connected, 39 active threads, read-only pairing, and no transcription configuration. The private pairing and bridge token are unchanged. Local commits contain synthetic test data only. No real messages, GitHub mutations, or paid transcription calls were made. Further physical placement, Android resume/focus, and live voice checks are deferred to the headset and credential setup.
+
+
+## Desktop environment integration
+
+Desktop mode combines enabled environments through T3's existing renderer runtime. Five additional Node tests cover scoped identities, routing of history and tool output, per-environment permissions, disconnect handling, local-origin authentication, and the actual renderer WebSocket transport with synthetic callbacks. All 48 Node/DOM tests pass. The 17 Chromium cases include environment filtering, separate drafts, read-only sending, and revocation of sending while an environment goes offline. The synthetic environment screenshot was inspected and added to the demo set.
+
+The adapter passes scoped web and desktop typechecks and both production bundle builds against the exact installed Nightly tag `v0.1.4-nightly.20261027.3783`, commit `dc84b0962efa`. The build required restoring the lockfile's optional Oxc React compiler binary in ignored build tools. Android debug and instrumentation APK builds and lint pass.
+
+A separate macOS app copy was packaged from that Nightly, with its original server and dependencies, the integrated renderer/main/preload bundles, and an ad-hoc signature that passes `codesign --verify --deep --strict`. Its launcher disables automatic updates and supplies the private loopback link configuration. It does not claim the official signing team's Touch ID entitlements.
+
+The installed Nightly, original T3 source checkout, saved environment catalog, and existing direct bridge were left untouched. Live activation and multi-environment reads remain unverified until the user quits Nightly and launches the prepared copy with the desktop-mode bridge. The copy uses the same Electron profile, so it was not started alongside the active app. No real messages, paid transcription, or headset tests were performed for this change.

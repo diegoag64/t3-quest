@@ -1,8 +1,10 @@
-import {threads,settledThreads,conversation,older} from '/fixture.mjs';
+import {threads as baseThreads,settledThreads as baseSettledThreads,conversation,older} from '/fixture.mjs';
 const drafts=new Map();
 window.previewActions=[];
 const params=new URLSearchParams(location.search);
 const scenario=params.get('scenario')||'default';
+const threads=scenario==='environments' ? baseThreads.slice(0,3).map((t,i)=>({...t,id:['laptop:same','desktop:same','server:same'][i],environmentId:['laptop','desktop','server'][i],environmentLabel:['Laptop','Desktop','Build server'][i],environmentConnected:i!==2,canSend:i===0})) : baseThreads;
+const settledThreads=scenario==='environments'?[]:baseSettledThreads;
 let selected;
 const composer=()=>window.QuestView.receive({kind:'composer',threadId:selected,payload:{canSend:true,canRecord:true,status:'draft',text:'',...drafts.get(selected)}});
 function open(id){
@@ -28,5 +30,5 @@ window.addEventListener('quest-request',e=>{
   if(action==='sendMessage'){drafts.set(selected,{text:'',status:'sent'});composer();}
 });
 window.QuestView.receive({kind:'list',payload:{threads:scenario==='empty'?[]:threads,settledThreads:scenario==='empty'?[]:settledThreads}});
-if(params.get('mode')==='reader')open('reader');
+if(params.get('mode')==='reader')open(threads[0]?.id||'reader');
 window.previewReady=true;

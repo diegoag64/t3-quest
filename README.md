@@ -24,6 +24,10 @@ The [headset test guide](docs/headset-test.md) covers the visual notification, s
 
 ## Connect your laptop
 
+To mirror every environment already connected in your desktop app, use the [desktop integration](docs/connect.md#mirror-your-desktop-environments). It reuses T3's existing connections, including T3 Connect, without pairing each machine again. This requires the integration-enabled T3 desktop build; the stock Nightly app does not expose this companion connection.
+
+For a direct connection to one T3 server, follow these steps.
+
 In T3 Code, create a fresh direct pairing link under **Settings → Sharing & access**. In a terminal inside `t3-quest`, run:
 
 ```sh

@@ -41,7 +41,11 @@ The first snapshot establishes a baseline. Later snapshots emit alerts for a com
 
 The adapter was implemented against the local T3 checkout at commit `bed923986fbcbe8279f23b9367efde1596bde1f9`. These are T3's internal client interfaces. An incompatible server update may require changing the adapter.
 
-T3 Connect is a cloud identity and tunnel system. It is not the name of Tailscale's protocol. Direct pairing, Tailscale, and T3 Connect ultimately reach the same environment API, but their credential acquisition differs. A future cloud client should reuse T3's shared connection runtime for Clerk and DPoP rather than imitate cloud login.
+T3 Connect is a cloud identity and tunnel system. Direct pairing, Tailscale, and T3 Connect ultimately reach the same environment API, but their credential acquisition differs.
+
+Desktop mode reuses the open desktop renderer's connection runtime and shared thread atoms. Its adapter connects outward to an authenticated WebSocket on `127.0.0.1:8788`; Quest continues to use the bridge on port 8787. The local link accepts only shell, thread, history, item, and reviewed-send requests. Environment credentials, Clerk sessions, and DPoP keys remain inside T3. Each request checks the selected environment's current connection and scope. Thread detail subscriptions expire after 30 seconds without reads, with at most four retained.
+
+The bridge qualifies thread and project IDs with the environment ID. This prevents duplicate IDs on separate machines from mixing history, navigation, drafts, or send receipts. Desktop disconnects preserve summaries with offline labels and disable sending. The adapter targets the desktop client only; ordinary web and mobile clients do not expose its opt-in preload configuration. It compiles against Nightly `dc84b0962efa`; changes to T3's internal atoms may require an adapter update.
 
 ## Data handling
 

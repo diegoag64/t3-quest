@@ -1,6 +1,31 @@
 import {test,expect} from '@playwright/test';
 const ready=async(page,url='/')=>{await page.goto(url);await page.waitForFunction(()=>window.previewReady);};
 const noOverflow=async page=>expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+test('desktop environments filter threads and keep draft permissions separate',async({page},info)=>{
+  await page.setViewportSize({width:420,height:480});await ready(page,'/?scenario=environments');
+  const filter=page.getByRole('combobox',{name:'Filter by environment'});
+  await expect(page.locator('.thread-row')).toHaveCount(3);
+  await expect(page.locator('.thread-row').last()).toContainText('Offline');
+  await page.screenshot({path:info.outputPath('environments.png')});await noOverflow(page);
+  await filter.selectOption('desktop');await expect(page.locator('.thread-row')).toHaveCount(1);
+  await page.locator('.thread-row').click();
+  const input=page.getByRole('textbox',{name:'Message draft'});
+  await input.fill('Desktop draft');
+  await expect(page.getByRole('button',{name:'Send message'})).toBeDisabled();
+  await expect(page.locator('.voice-hint')).toContainText('Read-only environment');
+  await page.getByRole('button',{name:'Back to threads'}).click();
+  await expect(filter).toHaveValue('desktop');
+  await filter.selectOption('laptop');await page.locator('.thread-row').click();
+  await expect(input).toHaveValue('');await input.fill('Laptop draft');
+  await expect(page.getByRole('button',{name:'Send message'})).toBeEnabled();
+  await page.evaluate(()=>{
+    const threads=structuredClone(QuestTest.state.threads);threads[0].environmentConnected=false;
+    QuestView.receive({kind:'list',payload:{threads}});
+  });
+  await expect(page.getByRole('button',{name:'Send message'})).toBeDisabled();
+  await expect(page.locator('.voice-hint')).toContainText('Environment offline');
+  expect(await page.evaluate(()=>previewActions.some(a=>a.action==='sendMessage'))).toBe(false);
+});
 test('switching to an uncached child clears the previous thread context',async({page},info)=>{
   await ready(page,'/?mode=reader');
   await page.getByRole('textbox',{name:'Message draft'}).fill('Draft for the parent');
