@@ -66,3 +66,11 @@ Remaining checks require the user: install the new APK and repeat centered open/
 After the user authorized a restart, the integrated Nightly copy reused the existing profile and connected both enabled environments. The bridge returned 50 threads across the laptop and remote PC. A read-only history request succeeded for each environment. Quest retained its existing bridge address and token.
 
 The device smoke test now accepts `-e requireEnvironments 2`. It filters each connected environment, checks row ownership, opens a thread, and verifies that its history matches the selected scoped ID. The live Quest run passed for both environments, including settled threads, scrolling, stable parent geometry, and reader cleanup. Private screenshots remain ignored. See the final section of [validation.md](validation.md) for the evidence and remaining voice, sign-in, and in-song focus checks.
+
+## Independent T3 Connect prototype
+
+The user requested a separate sign-in experiment before replacing the integrated Nightly copy. `npm run prototype:connect` now supports `login`, `list`, `check`, and `forget`. Its callback uses port 34338, and its credentials and reports stay in ignored `.state/connect-prototype/`. The running bridge, desktop profile, and installed Quest app were not changed.
+
+Live Google sign-in, OAuth refresh, and discovery succeeded. Both existing environments were returned without new machine pairings. Thread verification stopped at relay token exchange with HTTP 401 and `invalid_bearer`. Current upstream source accepts CLI OAuth tokens for discovery but requires a session-template JWT for DPoP connection-token issuance. This boundary is now a synthetic regression case. All 57 Node tests pass, including eight prototype cases. The existing bridge still returned HTTP 200 with both desktop environments connected.
+
+The experiment does not establish that stock Nightly can replace the current setup yet. Continue with a separate supported Clerk interactive session or upstream CLI-token exchange support, then verify live histories and refresh/restart behavior before connecting the Quest UI. See [the prototype guide](connect-prototype.md) for commands and protocol references. No physical-headset test is required for these isolated CLI changes.

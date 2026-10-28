@@ -26,6 +26,8 @@ The [headset test guide](docs/headset-test.md) covers the visual notification, s
 
 To mirror every environment already connected in your desktop app, use the [desktop integration](docs/connect.md#mirror-your-desktop-environments). It reuses T3's existing connections, including T3 Connect, without pairing each machine again. This requires the integration-enabled T3 desktop build; the stock Nightly app does not expose this companion connection.
 
+The separate [T3 Connect sign-in probe](docs/connect-prototype.md) tests account-based discovery without changing that setup. Live sign-in and discovery work. Connection-token authorization remains blocked, so this probe is not a replacement for the desktop integration yet.
+
 For a direct connection to one T3 server, follow these steps.
 
 In T3 Code, create a fresh direct pairing link under **Settings → Sharing & access**. In a terminal inside `t3-quest`, run:
@@ -99,4 +101,4 @@ The APK is generated at `app/build/outputs/apk/debug/app-debug.apk`. Node.js 22 
 - Direct T3 pairing with the `orchestration:read` permission.
 - Completion, failure, and input-request detection from T3 snapshots.
 
-The prototype does not implement wake-word control or T3 Connect cloud sign-in. Sending requires an operate-scoped pairing and an explicit Send action. Headset behavior must be tested on the device. Browser checks and a successful Android build do not establish microphone compatibility with Beat Saber.
+The Quest app does not implement wake-word control or independent T3 Connect cloud access. The separate sign-in probe is experimental. Sending requires an operate-scoped pairing and an explicit Send action. Headset behavior must be tested on the device. Browser checks and a successful Android build do not establish microphone compatibility with Beat Saber.

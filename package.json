@@ -20,7 +20,8 @@
     "test:browser": "node scripts/run-node.mjs node_modules/@playwright/test/cli.js test",
     "setup:desktop": "node scripts/run-node.mjs scripts/setup-desktop.mjs",
     "package:desktop": "node scripts/run-node.mjs scripts/package-desktop-copy.mjs",
-    "start:desktop": "T3_QUEST_SOURCE=desktop node scripts/run-node.mjs bridge/server.mjs"
+    "start:desktop": "T3_QUEST_SOURCE=desktop node scripts/run-node.mjs bridge/server.mjs",
+    "prototype:connect": "node scripts/run-node.mjs scripts/connect-prototype.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
