@@ -18,6 +18,10 @@ Run `npm run preview`, then open `http://127.0.0.1:8790` in a browser. Use brows
 
 Use `/?mode=reader` for a conversation, `/?mode=reader&scenario=offline` for a disconnected reader, `/?mode=reader&scenario=long` for long content, and `/?scenario=empty` for an empty list. The microphone button simulates recording. Stopping it supplies a synthetic draft. Send only clears that preview draft.
 
+## Refresh PR screenshots
+
+Run `node scripts/run-node.mjs scripts/capture-demo.mjs` to capture five demo views in `docs/screenshots/`. The script starts an isolated preview, uses synthetic threads, and simulates a voice draft without sending it. Inspect the images before committing them. These are browser renders of the production UI, not headset captures.
+
 ## Limits
 
 Chromium checks layout and JavaScript behavior. It cannot establish Horizon OS window placement, controller focus, Android service lifecycle, or microphone capture over Beat Saber. Keep the separate Android build, lint, and device smoke checks for those layers. Review screenshots after changes instead of accepting a screenshot solely because a test saved it.
