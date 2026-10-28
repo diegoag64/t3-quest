@@ -35,6 +35,14 @@ test('desktop source combines environments and routes details, children, history
   assert.equal(source.disconnected().threads.every(t=>!t.environmentConnected&&!t.canSend),true);
   assert.equal(source.environments.every(e=>!e.connected),true);
 });
+test('child threads absent from the sidebar retain their environment project',async()=>{
+  const source=createDesktopSource({connected:true,request:async(method)=>method==='shell'?{environments:[env('a'),env('b')]}:{projection:{thread:{id:'child-only',projectId:'project',title:'Child task'},runs:[],visibleTurnItems:[]}}});
+  await source.readShell();
+  const detail=await source.read(scopedId('b','child-only'));
+  assert.equal(detail.thread.project,'Project b');
+  assert.equal(detail.thread.environmentLabel,'Machine b');
+  assert.equal(detail.thread.id,scopedId('b','child-only'));
+});
 test('desktop transport requires the local origin and secret before accepting a peer',async t=>{
   const link=await startDesktopLink({token,port:0});t.after(()=>link.close());
   const url=`ws://127.0.0.1:${link.port}/desktop`;

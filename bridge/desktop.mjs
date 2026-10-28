@@ -113,7 +113,8 @@ export function createDesktopSource(link){
       if(cursor!==undefined)result=historyPage(data);
       else{
         const raw=shell.threads.find(t=>t.id===id);
-        const project=shell.projects.find(p=>p.id===raw?.projectId);
+        const projectId=scopedId(ref.environmentId,data.projection.thread.projectId);
+        const project=shell.projects.find(p=>p.id===projectId);
         const projection={...data.projection,thread:{...data.projection.thread,id,projectId:scopedId(ref.environmentId,data.projection.thread.projectId)}};
         result=threadDetail({...data,projection},raw,project);
         result.thread={...result.thread,id,environmentId:ref.environmentId,environmentLabel:environment.label,environmentConnected:true,canSend:environment.canSend};
