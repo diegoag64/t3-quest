@@ -92,3 +92,13 @@ Version 0.5.0 (code 7) is built and installed on the connected Quest 3. Android 
 The device test passed with `requireSpatial=true`: two open/back cycles retained the parent panel, the Layout SDK child remained 1000 × 780 CSS pixels, and the history viewport measured about 510 pixels high. The new composer was visible with an empty draft and disabled Send. A separate temporary draft verified persistence and preserved its request ID across an uncertain-delivery state; the test removed only its own temporary draft. The app-only screenshot was visually inspected and saved as `captures/voice-composer-quest.png`. The updated laptop bridge is running with the existing read-only session.
 
 No hosted API key is configured, and the existing T3 pairing is read-only. Live transcription, real message delivery, and microphone capture while Beat Saber has focus remain unverified. The user chose to configure credentials later. No real messages or microphone recording were started by these automated checks.
+
+## Headset-free companion iteration
+
+The overnight iteration adds a synthetic browser preview, T3-compatible pinned/manual ordering, offline labels, linked PRs, and a read-only repository view. `npm test` passes 42 Node/DOM cases. `npm run test:browser` passes ten Chromium cases at 1000 by 780, 420 by 480, and 420 by 350, including narrow PR drawers, offline and empty lists, preserved drafts, and repository errors. Screenshots of each primary view were inspected.
+
+The browser checks exposed two regressions: the compact list lost its scroll position after an inline reader visit, and a short fallback reader left only 68 pixels for history. Both are fixed, with regression assertions. The short-reader check requires more than 120 pixels of visible history.
+
+Live read-only checks validated T3 PR extraction and the fixed GitHub queries using the existing laptop CLI login. One linked repository returned five open PRs and nine open issues with passing, failing, and pending check states. Synthetic tests cover missing access, cached failures, canonical links, request authentication, and stale results. No GitHub mutation or actual thread send was performed.
+
+These overnight changes are not installed or checked on the headset. The installed app remains the previously verified 0.5.0 build. Browser rendering does not prove Horizon OS placement, input focus, or background recording.

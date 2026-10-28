@@ -63,6 +63,14 @@ Completed turns fold commentary and tool activity before the final assistant rep
 
 Voice drafts and reviewed sending are implemented in 0.5.0. Verify microphone capture and transcription during a song. Wake-word activation is not implemented. If background capture is silenced, use the microphone while the panel has focus.
 
+## Repository activity
+
+`normalizePullRequests` adapts T3's persisted links and legacy single-PR fields into a small presentation record. It hides stack tombstones, verifies GitHub URL identity, and marks snapshots older than five minutes as stale. Status-derived next steps never claim merge authorization.
+
+`GET /api/threads/:id/repository` resolves repositories from that thread's validated PR links. The client cannot supply an arbitrary repository, URL, or CLI command. The bridge invokes fixed `gh pr list` and `gh api --method GET` commands with argument arrays and timeouts. It forwards no credentials to Quest. Cached reads coalesce concurrent requests and back off failures; failed refreshes label retained data stale. The UI separates linked T3 snapshots from freshly fetched GitHub activity.
+
+The repository view is a bounded overview of open PRs and recently updated issues. It does not read GitHub Projects priority fields or infer an execution queue. No GitHub mutations are exposed.
+
 Platform references:
 
 - [Horizon OS panel sizing and multi-panel activity flags](https://developers.meta.com/vr/documentation/android-apps/features-overview/)

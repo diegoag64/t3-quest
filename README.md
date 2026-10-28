@@ -62,11 +62,20 @@ Drafts belong to their selected thread and survive closing the reader. Cancel st
 
 The API key stays on the laptop. Dictation recordings are deleted after transcription or cancellation; drafts stay in the app’s private storage. The bridge stores only message hashes and delivery receipts for retries.
 
+## Follow pull requests and repository work
+
+Choose **Pull requests** above the thread list to see PRs linked in T3 Code. In a conversation, choose **PRs** to open the side panel. It shows the branch, checks, review status, and a next step based on that evidence. Old snapshots are labeled. Passing checks alone do not mean a PR is ready to merge.
+
+Choose **Repository activity** in the PR panel to load open PRs and recently updated issues from GitHub. The bridge uses the laptop's existing `gh` login. If it is unavailable, run `gh auth login` on the laptop. Repository reads are cached for one minute and restricted to repositories linked to the current thread. The view shows up to three repositories, 20 open PRs per repository, and a bounded issue selection. It labels incomplete or stale results. Issue order reflects recent updates, not priority or an execution queue.
+
+These controls only read GitHub. They do not post comments, approve, merge, or alter issues. Threads without a linked GitHub PR do not yet have repository discovery.
+
 ## Build and connect
 
 - [Build and install the APK](docs/setup.md)
 - [Connect the computer bridge and T3](docs/connect.md)
 - [Understand the prototype and its limits](docs/architecture.md)
+- [Preview and test without a headset](docs/browser-testing.md)
 
 The APK is generated at `app/build/outputs/apk/debug/app-debug.apk`. Node.js 22 or later runs the bridge without runtime npm dependencies. Run `npm ci` to install development dependencies for UI tests. The npm commands use a supported runtime already installed through nvm if the current shell Node is older. `npm test` runs the bridge tests.
 
@@ -80,4 +89,4 @@ The APK is generated at `app/build/outputs/apk/debug/app-debug.apk`. Node.js 22 
 - Direct T3 pairing with the `orchestration:read` permission.
 - Completion, failure, and input-request detection from T3 snapshots.
 
-The prototype does not send messages to T3, implement wake-word control, or implement T3 Connect cloud sign-in. Headset behavior must be tested on the device. A successful Android build does not establish compatibility with Beat Saber.
+The prototype does not implement wake-word control or T3 Connect cloud sign-in. Sending requires an operate-scoped pairing and an explicit Send action. Headset behavior must be tested on the device. Browser checks and a successful Android build do not establish microphone compatibility with Beat Saber.

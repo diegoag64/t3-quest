@@ -15,9 +15,9 @@ The user authorized autonomous overnight work on October 28, 2026, with conventi
 ## Work sequence
 
 1. Commit the existing tested voice feature. Complete: `ba78f6d`.
-2. Add a committed synthetic preview and real-browser tests. Replace private fixture dependence with deterministic data. Inspect screenshots and fix layout regressions.
+2. Add a committed synthetic preview and real-browser tests. Complete: `58304dd`. The browser caught a real compact-list scroll reset, fixed in `9bb00d5`.
 3. Compare current sidebar and timeline rendering with upstream source. Fix the highest-impact differences and loading, empty, error, and stale states.
-4. Add linked PR visibility and a small read-only repository pipeline using T3 metadata and authenticated GitHub reads where available. Do not infer that work is ready to merge from green CI alone.
+4. Add linked PR visibility and a small read-only repository pipeline using T3 metadata and authenticated GitHub reads where available. Linked PRs are complete in `450f2ed`. The repository reader is complete in `30ec8f0`. Do not infer that work is ready to merge from green CI alone.
 5. Exercise edge cases, finish documentation, build the APK, and review the changes. Make coherent `feat:`, `fix:`, `test:`, and `docs:` commits.
 
 ## References and constraints
@@ -39,3 +39,9 @@ Heartbeat `improve-t3-quest-overnight` resumes this chat every 30 minutes for up
 
 - Voice baseline: 35 Node/DOM tests passed. Android build and lint passed. Version 0.5.0 was installed and its centered-reader navigation, visible history, and temporary draft persistence passed on Quest.
 - Live speech recognition and message delivery remain unverified without credentials. Background microphone capture with Beat Saber also remains unverified.
+- Headset-free suite covers compact, wide, narrow, and short fallback viewports. Wide, narrow, compact, PR drawer, and repository screenshots were inspected. The current 42 Node/DOM tests pass. Android build and lint pass with the repository native action.
+- Live read-only checks found 15 linked PRs across 12 T3 threads. A linked repository returned five open PRs and nine open issues, including passing, failing, and pending checks. No messages, comments, or mutations were sent.
+- Pinned/manual active ordering and offline list labels are complete in `e7d6c54`. Narrow PR, empty, and offline browser checks pass. The 420 by 350 fallback test exposed only 68 pixels of history. `a166324` fixes it with a compact-height composer, and the regression now requires more than 120 pixels. All ten browser cases pass and the resulting short-reader screenshot was inspected.
+- Next: audit loading/error recovery and remaining source differences, especially streaming updates, history pagination, PR freshness, and draft focus. Inspect baseline screenshots and add focused regression cases for actual gaps. Finish with a version bump to 0.6.0 and an APK build, without claiming headset verification.
+- The running laptop bridge has not been restarted with these overnight changes yet, and the headset still has the previous 0.5.0 installation. Restart the verified project bridge at the end if useful; avoid requiring USB or waking the headset.
+- An idle-sleep prevention process is running for six hours (exec session 12091). Heartbeat remains active for the next quality passes.
