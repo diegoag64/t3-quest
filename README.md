@@ -72,7 +72,11 @@ Choose **Pull requests** above the thread list to see PRs linked in T3 Code. In 
 
 Choose **Repository activity** in the PR panel to load open PRs and recently updated issues from GitHub. The bridge uses the laptop's existing `gh` login. If it is unavailable, run `gh auth login` on the laptop. Repository reads are cached for one minute and restricted to repositories linked to the current thread. The view shows up to three repositories, 20 open PRs per repository, and a bounded issue selection. It labels incomplete or stale results. Issue order reflects recent updates, not priority or an execution queue.
 
-These controls only read GitHub. They do not post comments, approve, merge, or alter issues. Threads without a linked GitHub PR do not yet have repository discovery.
+Choose a PR title or **View PR** to open GitHub inside the large reading panel. **Conversation**, **Files**, and **Checks** switch between PR sections. **← Thread** returns to the conversation with its draft and scroll position intact; opening from the compact list returns to **Threads**. The browser reuses the centered reader window. If spatial windows are unavailable, it opens in the existing panel.
+
+Private repositories require signing into GitHub in this view. **Quest Browser ↗** opens the current page in the headset browser if a login flow needs it. The embedded page is the actual GitHub website with its normal controls and a separate web sign-in. Laptop GitHub credentials are not transferred to it.
+
+The summary and repository endpoints only read GitHub. Threads without a linked GitHub PR do not yet have repository discovery.
 
 ## Build and connect
 

@@ -6,20 +6,22 @@ import android.net.Uri;
 import android.os.*;
 import org.json.*;
 import java.util.concurrent.*;
+import java.util.function.Consumer;
 
 /** Read-only conversation lifecycle inside the existing activity and WebView. */
 public final class ThreadController {
     private final Activity activity;
     private final ThreadWebView web;
     private final ThreadComposer composer;
+    private final Consumer<String> openPr;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final ExecutorService network = Executors.newSingleThreadExecutor();
     private String threadId;
     private boolean resumed, loading;
     private int generation;
 
-    public ThreadController(Activity activity, ThreadWebView web) {
-        this.activity=activity; this.web=web; this.composer=new ThreadComposer(activity,web);
+    public ThreadController(Activity activity, ThreadWebView web, Consumer<String> openPr) {
+        this.activity=activity; this.web=web; this.composer=new ThreadComposer(activity,web);this.openPr=openPr;
     }
     public boolean isOpen() { return threadId!=null; }
     public String selectedThread() { return threadId; }
@@ -52,6 +54,7 @@ public final class ThreadController {
                 }
                 break;
             case "openLink": openLink(payload.optString("url")); break;
+            case "openPr": if(GitHubPrUrl.root(payload.optString("url"))!=null)openPr.accept(payload.optString("url")); break;
             case "notice": new AlertDialog.Builder(activity).setMessage(payload.optString("text")).setPositiveButton("OK",null).show(); break;
         }
     }
@@ -89,6 +92,7 @@ public final class ThreadController {
     }
     private final Runnable poll=this::refresh;
     private void openLink(String url) {
+        if(GitHubPrUrl.root(url)!=null){openPr.accept(url);return;}
         Uri uri=Uri.parse(url);
         if (!("https".equals(uri.getScheme()) || "http".equals(uri.getScheme()))) return;
         new AlertDialog.Builder(activity).setTitle("Open link in browser?").setMessage(url).setNegativeButton("Cancel",null)

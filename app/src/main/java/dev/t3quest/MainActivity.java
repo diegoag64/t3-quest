@@ -34,6 +34,8 @@ public class MainActivity extends androidx.activity.ComponentActivity {
     private ThreadWebView threadWeb;
     private ThreadController threadController;
     private ReadingWindowHost readingHost;
+    private FrameLayout content;
+    private PrBrowserView inlineBrowser;
     private LinearLayout root, brand, nav;
     private EditText bridgeUrl, bridgeToken;
     private Switch record;
@@ -64,7 +66,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
             tabs[i] = button(labels[i], nav, () -> selectPage(page));
         }
         connection = text("○  Laptop not connected", 12, MUTED); root.addView(connection);
-        FrameLayout content = new FrameLayout(this); root.addView(content, new LinearLayout.LayoutParams(-1, 0, 1));
+        content = new FrameLayout(this); root.addView(content, new LinearLayout.LayoutParams(-1, 0, 1));
         for (int i = 0; i < pages.length; i++) {
             if (i == 0) {
                 threadWeb = new ThreadWebView(this, "list", null, (action, payload) -> {
@@ -72,7 +74,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
                     else if(action.equals("compact")) closeThread();
                     else threadController.action(action,payload);
                 });
-                threadController = new ThreadController(this,threadWeb);
+                threadController = new ThreadController(this,threadWeb,this::openPr);
                 pages[i] = threadWeb; content.addView(threadWeb, new FrameLayout.LayoutParams(-1, -1));
                 continue;
             }
@@ -82,7 +84,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
             if (i == 1) buildConnection(body);
             if (i == 2) buildTest(body);
         }
-        readingHost = new ReadingWindowHost(this, root, this::openInlineThread, this::closeThread);
+        readingHost = new ReadingWindowHost(this, root, this::openInlineThread, this::openInlinePr, this::closeThread);
         selectPage(0);
         if(saved!=null && saved.getString("selectedThread")!=null)openThread(saved.getString("selectedThread"));
         LabState.event(this, "panel.created", "T3 panel opened");
@@ -104,6 +106,23 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         threadController.open(id);
         toast("Reading in this panel — Quest could not open an extra window.");
     }
+    private void openPr(String url) {
+        if (GitHubPrUrl.root(url)==null) return;
+        if (threadController.isOpen()) openInlinePr(url); else readingHost.openPr(url);
+    }
+    private void openInlinePr(String url) {
+        closeInlinePr();
+        setConversationChrome(true);threadController.pause();
+        inlineBrowser=new PrBrowserView(this,this,url,threadController.isOpen()?"← Thread":"← Threads",this::closeInlinePr);
+        content.addView(inlineBrowser,new FrameLayout.LayoutParams(-1,-1));
+        if(!resumed)inlineBrowser.pause();
+    }
+    private void closeInlinePr() {
+        if(inlineBrowser==null)return;
+        content.removeView(inlineBrowser);inlineBrowser.dispose();inlineBrowser=null;
+        setConversationChrome(threadController.isOpen());
+        if(resumed)threadController.resume();
+    }
     // Instrumentation uses this without changing the production navigation path.
     ReadingWindowHost readingWindowHost() { return readingHost; }
 
@@ -113,12 +132,13 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         root.setPadding(open?0:dp(12),open?0:dp(8),open?0:dp(12),open?0:dp(8));
     }
     private void closeThread() {
+        closeInlinePr();
         readingHost.close();
         if(threadController.isOpen())threadController.close();
         setConversationChrome(false);selectPage(0);renderThreads();
         LabState.event(this,"thread.close","Returned to list in the existing panel");
     }
-    @Override public void onBackPressed(){if(readingHost.isOpen() || threadController.isOpen())closeThread();else super.onBackPressed();}
+    @Override public void onBackPressed(){if(inlineBrowser!=null){if(!inlineBrowser.goBack())closeInlinePr();return;}if(readingHost.backFromPr())return;if(readingHost.isOpen() || threadController.isOpen())closeThread();else super.onBackPressed();}
     @Override protected void onSaveInstanceState(Bundle saved){super.onSaveInstanceState(saved);saved.putString("selectedThread",readingHost.isOpen()?readingHost.selectedThread():threadController.selectedThread());}
 
     private void buildConnection(LinearLayout root) {
@@ -126,7 +146,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         LinearLayout voiceSetup = card(root, "Voice and sending");
         voiceSetup.addView(text("On your laptop, configure hosted transcription. The API key stays on the laptop.",13,INK));
         command(voiceSetup,"npm run setup:voice");
-        voiceSetup.addView(text("Create a fresh T3 pairing link with permission to operate threads, then run:",13,INK));
+        voiceSetup.addView(text("Direct mode: create a T3 pairing link with permission to operate threads, then run:",13,INK));
         command(voiceSetup,"npm run pair -- --write");
         voiceSetup.addView(text("Restart the bridge. In a thread: tap Microphone, speak, Stop & transcribe, review the draft, then Send. Recording can continue with game focus and stops after 60 seconds.",13,MUTED));
         root.addView(text("Laptop + Quest on the same Wi-Fi. Keep T3 Code and the bridge running on your laptop.", 13, MUTED));
@@ -151,7 +171,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
         bridgeToken = input("Paste bridge token", true); manual.addView(bridgeToken);
         button("Save & check", manual, () -> { if (saveConnection()) checkBridge(true); });
         loadConnectionFields();
-        root.addView(text("This prototype uses direct pairing. T3 Connect cloud sign-in is not available here. Tailscale can provide a reachable address, but is optional.", 12, MUTED));
+        root.addView(text("Desktop mode: use the integration-enabled T3 app and npm run start:desktop to share all its connected environments, including T3 Connect. No per-machine pairing is needed. Direct mode above connects one server.", 12, MUTED));
     }
 
     private void buildTest(LinearLayout root) {
@@ -387,10 +407,10 @@ public class MainActivity extends androidx.activity.ComponentActivity {
     }
 
     @Override protected void onNewIntent(Intent intent) { super.onNewIntent(intent); importConnection(); }
-    @Override protected void onResume() { super.onResume(); resumed = true; importConnection(); threadController.resume(); readingHost.resume(); LabState.panelResumed = true; LabState.event(this, "panel.resumed", "Activity resumed"); handler.removeCallbacks(refresh); handler.post(refresh); }
-    @Override protected void onPause() { resumed = false; threadController.pause(); readingHost.pause(); LabState.panelResumed = false; LabState.event(this, "panel.paused", LabState.running ? "Panel paused; test continues" : "Panel paused; foreground polling paused"); handler.removeCallbacks(refresh); super.onPause(); }
+    @Override protected void onResume() { super.onResume(); resumed = true; importConnection(); if(inlineBrowser==null)threadController.resume();else inlineBrowser.resume(); readingHost.resume(); LabState.panelResumed = true; LabState.event(this, "panel.resumed", "Activity resumed"); handler.removeCallbacks(refresh); handler.post(refresh); }
+    @Override protected void onPause() { resumed = false; if(inlineBrowser!=null)inlineBrowser.pause(); threadController.pause(); readingHost.pause(); LabState.panelResumed = false; LabState.event(this, "panel.paused", LabState.running ? "Panel paused; test continues" : "Panel paused; foreground polling paused"); handler.removeCallbacks(refresh); super.onPause(); }
     @Override public void onWindowFocusChanged(boolean focused) { super.onWindowFocusChanged(focused); LabState.panelFocused = focused; LabState.event(this, "panel.focus", Boolean.toString(focused)); }
-    @Override protected void onDestroy() { connectionGeneration++; handler.removeCallbacksAndMessages(null); releasePlayer(); network.shutdownNow(); if(readingHost!=null)readingHost.dispose(); if(threadController!=null)threadController.dispose(); if(threadWeb!=null)threadWeb.dispose(); super.onDestroy(); }
+    @Override protected void onDestroy() { if(inlineBrowser!=null)inlineBrowser.dispose(); connectionGeneration++; handler.removeCallbacksAndMessages(null); releasePlayer(); network.shutdownNow(); if(readingHost!=null)readingHost.dispose(); if(threadController!=null)threadController.dispose(); if(threadWeb!=null)threadWeb.dispose(); super.onDestroy(); }
     private void releasePlayer() { if (player != null) { player.release(); player = null; } }
     private void toast(String message) { Toast.makeText(this, message, Toast.LENGTH_LONG).show(); }
     private int dp(int n) { return Math.round(n * getResources().getDisplayMetrics().density); }

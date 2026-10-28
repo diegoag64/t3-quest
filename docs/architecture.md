@@ -73,7 +73,9 @@ Voice drafts and reviewed sending are implemented in 0.5.0. Verify microphone ca
 
 `GET /api/threads/:id/repository` resolves repositories from that thread's validated PR links. The client cannot supply an arbitrary repository, URL, or CLI command. The bridge invokes fixed `gh pr list` and `gh api --method GET` commands with argument arrays and timeouts. It forwards no credentials to Quest. Cached reads coalesce concurrent requests and back off failures; failed refreshes label retained data stale. The UI separates linked T3 snapshots from freshly fetched GitHub activity.
 
-The repository view is a bounded overview of open PRs and recently updated issues. It does not read GitHub Projects priority fields or infer an execution queue. No GitHub mutations are exposed.
+The repository view is a bounded overview of open PRs and recently updated issues. It does not read GitHub Projects priority fields or infer an execution queue. The bridge exposes no GitHub mutations.
+
+`PrBrowserView` displays the live GitHub website in a separate WebView inside the existing reading window. The conversation WebView remains mounted underneath, and polling pauses until the browser closes. GitHub never loads in `ThreadWebView`, which has the native `T3Quest` interface. The browser has no JavaScript interface or bridge credentials. Entry URLs must identify an HTTPS github.com pull request; other HTTPS navigation requires a user-selected external-browser handoff. GitHub sign-in uses first-party WebView cookies, with an explicit Quest Browser fallback. Website actions use that web session and are distinct from the read-only bridge. This separation follows Android's [WebView interface guidance](https://developer.android.com/develop/ui/views/layout/webapps/webview#BindingJavaScript).
 
 Platform references:
 

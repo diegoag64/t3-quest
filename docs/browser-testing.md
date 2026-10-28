@@ -24,4 +24,6 @@ Run `node scripts/run-node.mjs scripts/capture-demo.mjs` to capture six demo vie
 
 ## Limits
 
+Run `npm run build:android -- :app:testDebugUnitTest` for eight local Android tests. They check PR URL handling, native browser section buttons, explicit return, external-browser fallback, load errors, and separation from the T3 JavaScript interface. Robolectric runs these tests without an emulator or headset; it does not render or authenticate the live GitHub site.
+
 Chromium checks layout and JavaScript behavior. It cannot establish Horizon OS window placement, controller focus, Android service lifecycle, or microphone capture over Beat Saber. Keep the separate Android build, lint, and device smoke checks for those layers. Review screenshots after changes instead of accepting a screenshot solely because a test saved it.

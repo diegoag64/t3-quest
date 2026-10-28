@@ -23,7 +23,7 @@
     card.dataset.prStale=String(Boolean(pr.stale));
     card.dataset.prSource=pr.source||'t3';
     card.dataset.prNext=pr.nextStep||'Check status on GitHub';
-    const title=button('', 'pr-title',()=>threadId?request('openThread',{id:threadId}):request('openLink',{url:pr.url}));
+    const title=button('', 'pr-title',()=>request('openPr',{url:pr.url}));
     title.append(icon('branch'),el('span','pr-number','#'+pr.number),el('span','truncate',pr.title));
     card.append(title,el('div','pr-repository',pr.repository));
     const signals=el('div','pr-signals');
@@ -40,7 +40,7 @@
     const freshness=el('div','pr-freshness'+(pr.stale?' stale':''),pr.stale?'Status may be outdated':pr.source==='github'?'Fetched from GitHub':'Synced from T3');
     if(pr.syncedAt)freshness.title='Last synced '+pr.syncedAt;
     card.append(freshness);
-    if(!threadId)card.append(button('Open on GitHub','pr-open',()=>request('openLink',{url:pr.url})));
+    const actions=el('div','pr-actions');actions.append(button('View PR','pr-open',()=>request('openPr',{url:pr.url})));if(threadId)actions.append(button('Thread','pr-open',()=>request('openThread',{id:threadId})));card.append(actions);
     refreshPrFreshness(card);
     return card;
   }

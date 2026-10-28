@@ -152,14 +152,17 @@ test('offline and long messages remain readable',async({page},info)=>{
 test('linked PRs show checks and next steps while preserving the draft',async({page},info)=>{
   await ready(page);await page.getByRole('button',{name:'Pull requests',exact:true}).click();
   await expect(page.locator('.pr-card')).toHaveCount(2);await expect(page.getByText('Fix failing checks')).toBeVisible();
-  await page.locator('.pr-title').first().click();await page.getByRole('textbox',{name:'Message draft'}).fill('Check the review feedback.');
+  await page.locator('.pr-title').first().click();
+  expect(await page.evaluate(()=>previewActions.at(-1))).toEqual({action:'openPr',payload:{url:'https://github.com/example/t3-quest/pull/42'}});
+  await expect(page.getByRole('searchbox')).toBeVisible();
+  await page.getByRole('button',{name:'Thread',exact:true}).first().click();await page.getByRole('textbox',{name:'Message draft'}).fill('Check the review feedback.');
   await page.getByRole('button',{name:'Show pull requests'}).click();
   await expect(page.locator('.pr-panel')).toBeVisible();await expect(page.locator('.pr-panel').getByText('Get a review')).toBeVisible();
   await expect(page.locator('.pr-panel').getByText('Checks passed')).toBeVisible();await noOverflow(page);
   expect((await page.locator('.timeline-scroll').boundingBox()).height).toBeGreaterThan(120);
   await page.screenshot({path:info.outputPath('pull-requests.png')});
-  await page.getByRole('button',{name:'Open on GitHub'}).click();
-  expect(await page.evaluate(()=>previewActions.at(-1))).toEqual({action:'openLink',payload:{url:'https://github.com/example/t3-quest/pull/42'}});
+  await page.getByRole('button',{name:'View PR',exact:true}).click();
+  expect(await page.evaluate(()=>previewActions.at(-1))).toEqual({action:'openPr',payload:{url:'https://github.com/example/t3-quest/pull/42'}});
   await page.getByRole('button',{name:'Close',exact:true}).click();await expect(page.getByRole('textbox',{name:'Message draft'})).toHaveValue('Check the review feedback.');
 });
 test('repository view shows open work and handles failure without replacing the conversation',async({page},info)=>{

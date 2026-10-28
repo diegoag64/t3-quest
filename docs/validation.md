@@ -120,3 +120,12 @@ The adapter passes scoped web and desktop typechecks and both production bundle 
 A separate macOS app copy was packaged from that Nightly, with its original server and dependencies, the integrated renderer/main/preload bundles, and an ad-hoc signature that passes `codesign --verify --deep --strict`. Its launcher disables automatic updates and supplies the private loopback link configuration. It does not claim the official signing team's Touch ID entitlements.
 
 The installed Nightly, original T3 source checkout, saved environment catalog, and existing direct bridge were left untouched. Live activation and multi-environment reads remain unverified until the user quits Nightly and launches the prepared copy with the desktop-mode bridge. The copy uses the same Electron profile, so it was not started alongside the active app. No real messages, paid transcription, or headset tests were performed for this change.
+
+
+## Embedded GitHub PR browser
+
+PR titles and View PR now open the live GitHub website in the existing centered reader. Native controls provide Conversation, Files, Checks, reload, page history, and a return to the retained thread or compact list. The inline fallback uses the existing activity. The thread WebView stays mounted, with its controller paused while the browser is visible. External browser launch remains an explicit action.
+
+All 48 Node/DOM and 17 Chromium tests pass. Browser tests verify distinct PR/thread actions and draft preservation. Eight local Android tests pass: four URL-policy cases and four Robolectric browser cases covering section navigation, explicit return, blocked local URLs, absence of the T3Quest interface, load-error recovery, and explicit external-browser handoff. Android debug and instrumentation builds and lint pass with zero errors and 20 warnings. The refreshed PR and repository screenshots use synthetic data and were inspected.
+
+The native website is a separate WebView with no T3 JavaScript interface or laptop credentials. It uses its own GitHub web login; the live website retains normal GitHub controls. Tests do not sign in, load private PRs, post comments, or send thread messages. Live GitHub rendering, login compatibility, controller focus, and return navigation during Beat Saber still require a headset check. Robolectric verifies native logic without rendering the remote website, and browser screenshots show the PR summary UI rather than a headset capture.
