@@ -1,7 +1,7 @@
 (() => {
   'use strict';
   const app = document.getElementById('app');
-  const state = { mode:'list', threads:[], settledThreads:[], selected:null, detail:null, items:[], historyLoaded:false, query:'', project:'', loadingHistory:false, signature:'', loadedItems:new Map(), composer:null, sidebarTab:'threads' };
+  const state = { mode:'list', threads:[], settledThreads:[], selected:null, detail:null, items:[], historyLoaded:false, query:'', project:'', loadingHistory:false, signature:'', loadedItems:new Map(), composer:null, sidebarTab:'threads', repository:null, repositoryLoading:false, repositoryError:'' };
   const colors={gray:'#9ca3af',red:'#f87171',orange:'#fb923c',amber:'#fbbf24',yellow:'#facc15',lime:'#a3e635',green:'#4ade80',emerald:'#34d399',teal:'#2dd4bf',cyan:'#22d3ee',sky:'#38bdf8',blue:'#60a5fa',indigo:'#818cf8',violet:'#a78bfa',purple:'#c084fc',fuchsia:'#e879f9',pink:'#f472b6',rose:'#fb7185'};
   const paths={back:'m15 18-6-6 6-6',sidebar:'M9 3v18M3 3h18v18H3z',search:'m21 21-5-5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0',check:'m8 12 3 3 5-6M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0',circle:'M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0',alert:'M12 8v5m0 4h.01M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0',lock:'M6 10h12v11H6zM8 10V6a4 4 0 0 1 8 0v4',terminal:'m4 6 6 6-6 6m9 0h7',branch:'M6 3v12a6 6 0 0 0 12 0V9M3 5a3 3 0 1 0 6 0 3 3 0 1 0-6 0M15 6a3 3 0 1 0 6 0 3 3 0 1 0-6 0',file:'M14 2H5v20h14V7zM14 2v6h5',spark:'m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z',gauge:'M4 18a9 9 0 1 1 16 0M12 14l4-6',arrow:'m6 12 6-6 6 6M12 6v14',chevron:'m9 6 6 6-6 6'};
   function el(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e;}
@@ -33,7 +33,7 @@
     card.append(signals,el('div','pr-next',pr.nextStep||'Check status on GitHub'));
     if(pr.headBranch)card.append(el('div','pr-branches',pr.headBranch+' → '+pr.baseBranch));
     if(pr.stack?.length){const stack=el('div','pr-stack');stack.append(el('span','muted','Stack, base first'));for(const layer of pr.stack)stack.append(el('div','',`#${layer.number} · ${layer.headBranch} · ${layer.state}`));card.append(stack);}
-    const freshness=el('div','pr-freshness'+(pr.stale?' stale':''),pr.stale?'Status may be outdated':'Synced from T3');
+    const freshness=el('div','pr-freshness'+(pr.stale?' stale':''),pr.stale?'Status may be outdated':pr.source==='github'?'Fetched from GitHub':'Synced from T3');
     if(pr.syncedAt)freshness.title='Last synced '+pr.syncedAt;
     card.append(freshness);
     if(!threadId)card.append(button('Open on GitHub','pr-open',()=>request('openLink',{url:pr.url})));
@@ -46,7 +46,33 @@
     const list=el('div','pr-list');const prs=state.detail?.thread?.pullRequests||[];
     if(!prs.length)list.append(el('div','empty','No pull requests linked to this thread. Link one in T3 Code on your laptop.'));
     for(const pr of prs)list.append(prCard(pr));
-    pane.replaceChildren(header,list);list.scrollTop=scroll;
+    const repository=el('section','repository-section');
+    const refresh=button(state.repositoryLoading?'Loading repository…':state.repository?'Refresh repository':'Repository activity','pr-open',()=>{state.repositoryLoading=true;state.repositoryError='';renderPullRequests();request('loadRepository',{threadId:state.selected});});
+    refresh.disabled=state.repositoryLoading;repository.append(refresh);
+    if(state.repositoryError)repository.append(el('p','pr-freshness stale',state.repositoryError));
+    if(state.repository){
+      if(!state.repository.repositories?.length)repository.append(el('p','muted','Link a GitHub PR in T3 to identify this thread’s repository.'));
+      for(const repo of state.repository.repositories||[]){
+        repository.append(el('h3','repository-title',repo.repository));
+        if(repo.error)repository.append(el('p','pr-freshness stale',repo.error));
+        if(repo.fetchedAt)repository.append(el('div','pr-freshness'+(repo.stale?' stale':''),(repo.stale?'Last successful fetch: ':'Fetched: ')+new Date(repo.fetchedAt).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})));
+        repository.append(el('h4','','Open pull requests'));
+        if(!repo.pullRequests.length)repository.append(el('p','muted',repo.error?'Pull requests unavailable.':'No open pull requests.'));
+        for(const pr of repo.pullRequests)repository.append(prCard({...pr,source:'github'}));
+        repository.append(el('h4','','Open issues'));
+        repository.append(el('p','pr-freshness','Recently updated. This order is not a priority ranking.'));
+        if(!repo.issues.length)repository.append(el('p','muted',repo.error?'Issues unavailable.':'No open issues.'));
+        for(const issue of repo.issues){
+          const card=el('article','issue-card');card.append(button('#'+issue.number+' '+issue.title,'issue-title',()=>request('openLink',{url:issue.url})));
+          if(issue.labels?.length)card.append(el('div','pr-freshness',issue.labels.join(' · ')));
+          if(issue.milestone)card.append(el('div','pr-freshness','Milestone: '+issue.milestone));
+          repository.append(card);
+        }
+        if(repo.partial)repository.append(el('p','pr-freshness','Showing a limited selection. Open GitHub for the full repository.'));
+      }
+      if(state.repository.partial)repository.append(el('p','pr-freshness','Showing the first three linked repositories.'));
+    }
+    list.append(repository);pane.replaceChildren(header,list);list.scrollTop=scroll;
     const toggle=document.querySelector('.pr-toggle');if(toggle)toggle.textContent='PRs'+(prs.length?' · '+prs.length:'');
   }
   function renderLists(){
@@ -154,12 +180,14 @@
   function mergeItems(oldRows,newRows){const map=new Map(oldRows.map(r=>[r.id,r]));for(const r of newRows)map.set(r.id,r);return [...map.values()].sort((a,b)=>a.position-b.position);}
   function receive(event){const data=event.payload||{};if(event.kind==='list'){state.threads=data.threads||[];state.settledThreads=data.settledThreads||[];renderLists();return;}
     if(event.threadId&&event.threadId!==state.selected)return;
+    if(event.kind==='repository'){state.repository=data;state.repositoryLoading=false;state.repositoryError='';renderPullRequests();return;}
+    if(event.kind==='repositoryError'){state.repositoryLoading=false;state.repositoryError='Could not refresh repository activity. Retry when the laptop is connected.';renderPullRequests();return;}
     if(event.kind==='composer'){state.composer=data;updateComposer();return;}
     if(event.kind==='error'){const banner=document.querySelector('.error-banner');if(banner){banner.hidden=false;banner.textContent=data.message||'Connection lost. Retrying…';}const live=document.querySelector('.top-state');if(live){live.textContent='Offline';live.classList.remove('live');}state.loadingHistory=false;renderTimeline();return;}
     if(event.kind==='item'){if(data.item){state.loadedItems.set(data.item.id,data.item);for(const r of state.items)if(r.item.id===data.item.id)r.item=data.item;}renderTimeline();return;}
     if(event.kind==='snapshot'||event.kind==='history'){const initial=!state.detail;const banner=document.querySelector('.error-banner');banner.hidden=true;const live=document.querySelector('.top-state');live.textContent='Live';live.classList.add('live');if(event.kind==='snapshot'){const signature=JSON.stringify({thread:data.thread,items:data.items,runs:data.runs});if(signature===state.signature)return;state.signature=signature;const min=Math.min(...data.items.map(r=>r.position));state.items=mergeItems(state.items.filter(r=>r.position<min),data.items);const previous=state.detail;state.detail={...data};if(state.historyLoaded&&previous){state.detail.historyCursor=previous.historyCursor;state.detail.hasMoreHistory=previous.hasMoreHistory;}updateChrome(data.thread);}else {state.items=mergeItems(data.items,state.items);state.detail.historyCursor=data.historyCursor;state.detail.hasMoreHistory=data.hasMoreHistory;state.historyLoaded=true;state.loadingHistory=false;}for(const r of state.items){const loaded=state.loadedItems.get(r.item.id);if(loaded&&loaded.updatedAt===r.item.updatedAt&&r.item.outputOmitted)r.item=loaded;}renderTimeline(initial);}
   }
-  function selectThread(id){state.selected=id;state.composer=null;const prPanel=document.querySelector('.pr-panel');if(prPanel)prPanel.hidden=true;document.querySelector('.pr-toggle')?.setAttribute('aria-expanded','false');document.querySelector('.draft-input')?.blur();const draft=document.querySelector('.draft-input');if(draft)draft.value='';state.loadedItems.clear();state.detail=null;state.items=[];state.signature='';state.historyLoaded=false;state.loadingHistory=false;document.querySelector('.timeline')?.replaceChildren(el('div','loading','Loading conversation…'));const banner=document.querySelector('.error-banner');if(banner)banner.hidden=true;const known=[...state.threads,...state.settledThreads].find(t=>t.id===id);if(known)updateChrome(known);updateComposer();renderLists();}
+  function selectThread(id){state.selected=id;state.composer=null;state.repository=null;state.repositoryLoading=false;state.repositoryError='';const prPanel=document.querySelector('.pr-panel');if(prPanel)prPanel.hidden=true;document.querySelector('.pr-toggle')?.setAttribute('aria-expanded','false');document.querySelector('.draft-input')?.blur();const draft=document.querySelector('.draft-input');if(draft)draft.value='';state.loadedItems.clear();state.detail=null;state.items=[];state.signature='';state.historyLoaded=false;state.loadingHistory=false;document.querySelector('.timeline')?.replaceChildren(el('div','loading','Loading conversation…'));const banner=document.querySelector('.error-banner');if(banner)banner.hidden=true;const known=[...state.threads,...state.settledThreads].find(t=>t.id===id);if(known)updateChrome(known);updateComposer();renderLists();}
   let compactSidebar=null,compactScroll=0;
   function configure(config){if(state.mode==='list'){compactSidebar=app.querySelector('.sidebar')||compactSidebar;compactScroll=compactSidebar?.querySelector('.sidebar-list')?.scrollTop||0;}state.mode=config.mode||'list';app.replaceChildren();if(state.mode==='list'){state.selected=null;state.detail=null;state.items=[];state.signature='';state.loadedItems.clear();state.loadingHistory=false;state.historyLoaded=false;app.className='list-only';app.append(compactSidebar||makeSidebar());renderLists();app.querySelector('.sidebar-list').scrollTop=compactScroll;return;}app.className='workspace';const header=el('header','topbar');const back=button('','icon-button',()=>request('compact'));back.title='Back to threads';back.setAttribute('aria-label','Back to threads');back.append(icon('back'));const toggle=button('','icon-button',()=>{aside.hidden=!aside.hidden;});toggle.title='Toggle thread sidebar';toggle.setAttribute('aria-label','Toggle thread sidebar');toggle.append(icon('sidebar'));const prToggle=button('PRs','pr-toggle',()=>{prPane.hidden=!prPane.hidden;prToggle.setAttribute('aria-expanded',String(!prPane.hidden));renderPullRequests();});prToggle.setAttribute('aria-label','Show pull requests');prToggle.setAttribute('aria-expanded','false');header.append(back,toggle,el('div','breadcrumb','Loading conversation…'),prToggle,el('span','top-state','Connecting…'));const body=el('div','workspace-body');const aside=makeSidebar();aside.hidden=true;const main=el('main','conversation');const banner=el('div','error-banner');banner.hidden=true;const scroll=el('div','timeline-scroll');scroll.append(el('div','timeline'));const jump=button('Latest ↓','new-messages',()=>{scroll.scrollTop=scroll.scrollHeight;jump.hidden=true;});jump.hidden=true;scroll.onscroll=()=>{if(scroll.scrollHeight-scroll.scrollTop-scroll.clientHeight<100)jump.hidden=true;};main.append(banner,scroll,jump,el('footer','footer'));const prPane=el('aside','pr-panel');prPane.setAttribute('aria-label','Pull requests');prPane.hidden=true;body.append(aside,main,prPane);app.append(header,body);if(config.threadId)selectThread(config.threadId);}
   window.QuestView={configure,receive,selectThread,decode(base64){receive(JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(base64),c=>c.charCodeAt(0)))));}};

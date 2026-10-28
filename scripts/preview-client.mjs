@@ -19,6 +19,7 @@ window.addEventListener('quest-request',e=>{
   if(action==='openThread')open(payload.id);
   if(action==='compact')window.QuestView.configure({mode:'list'});
   if(action==='loadHistory')window.QuestView.receive({kind:'history',threadId:selected,payload:{items:older,hasMoreHistory:false,historyCursor:null}});
+  if(action==='loadRepository')window.QuestView.receive({kind:'repository',threadId:selected,payload:{repositories:[{repository:'example/t3-quest',fetchedAt:'2026-10-28T01:02:00Z',partial:false,pullRequests:[...threads[0].pullRequests,...threads[1].pullRequests],issues:[{number:44,title:'Improve microphone feedback',url:'https://github.com/example/t3-quest/issues/44',labels:['enhancement'],milestone:'VR companion'}]}]}});
   if(action==='draftChanged'){drafts.set(selected,{text:payload.text,status:'draft'});}
   if(action==='discardDraft'){drafts.set(selected,{text:'',status:'draft'});composer();}
   if(action==='dictateStart'){drafts.set(selected,{...drafts.get(selected),status:'recording',seconds:4});composer();}

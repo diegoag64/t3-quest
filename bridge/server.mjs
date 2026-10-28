@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { join } from 'node:path';
 import { networkInterfaces } from 'node:os';
 import { canOperate, createMessageSender, validateMessage } from './thread-send.mjs';
+import { createRepositoryReader } from './repository.mjs';
 import { ThreadMonitor, readShell } from './t3.mjs';
 import { readThreadData, threadDetail, historyPage, validateId, readTurnItem } from './thread-view.mjs';
 
@@ -65,7 +66,7 @@ export async function transcribe(audio, config, fetcher = fetch) {
   return { text: result.text.slice(0, 20_000) };
 }
 
-export function makeServer({ token, state, demoComplete, config = {}, fetcher = fetch, threadRead, threadSend }) {
+export function makeServer({ token, state, demoComplete, config = {}, fetcher = fetch, threadRead, threadSend, repositoryRead }) {
   let transcribing = false;
   return createServer(async (request, response) => {
     const send = (code, value) => {
@@ -78,6 +79,11 @@ export function makeServer({ token, state, demoComplete, config = {}, fetcher = 
     const path = request.url;
     try {
       if (request.method === 'GET' && path === '/api/state') return send(200, state());
+      if(request.method==='GET'&&/^\/api\/threads\/[^/]+\/repository$/.test(path)){
+        if(!repositoryRead)return send(409,{error:'Connect T3 to view repository activity.'});
+        let id;try{id=validateId(decodeURIComponent(path.split('/')[3]));}catch{return send(400,{error:'Invalid thread ID'});}
+        return send(200,await repositoryRead(id));
+      }
       if (request.method === 'POST' && /^\/api\/threads\/[^/]+\/messages$/.test(path)) {
         if (!threadSend) return send(403,{error:'Sending is unavailable. Pair with npm run pair -- --write.'});
         if (request.headers['content-type'] !== 'application/json') return send(415,{error:'Send application/json'});
@@ -182,6 +188,7 @@ export async function main() {
   }
   const server = makeServer({
     token, threadRead: session ? threadRead : null,
+    repositoryRead: session ? createRepositoryReader(()=>monitor.shell.threads) : null,
     threadSend: session ? createMessageSender(session,join(directory,'message-receipts')) : null,
     state: () => ({
       mode: session ? (canSend ? 't3-connected' : 't3-read-only') : 'demo', status, updatedAt, canSend,

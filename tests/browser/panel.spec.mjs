@@ -49,3 +49,15 @@ test('linked PRs show checks and next steps while preserving the draft',async({p
   expect(await page.evaluate(()=>previewActions.at(-1))).toEqual({action:'openLink',payload:{url:'https://github.com/example/t3-quest/pull/42'}});
   await page.getByRole('button',{name:'Close',exact:true}).click();await expect(page.getByRole('textbox',{name:'Message draft'})).toHaveValue('Check the review feedback.');
 });
+test('repository view shows open work and handles failure without replacing the conversation',async({page},info)=>{
+  await ready(page,'/?mode=reader');await page.getByRole('button',{name:'Show pull requests'}).click();
+  await page.getByRole('button',{name:'Repository activity',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Open issues'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'#44 Improve microphone feedback'})).toBeVisible();
+  await page.locator('.pr-list').evaluate(n=>n.scrollTop=n.scrollHeight);await page.screenshot({path:info.outputPath('repository.png')});
+  await page.evaluate(()=>QuestView.receive({kind:'repositoryError',threadId:'reader',payload:{}}));
+  await expect(page.getByText(/Could not refresh repository activity/)).toBeVisible();
+  await expect(page.locator('.top-state')).toHaveText('Live');
+  await page.evaluate(()=>QuestView.receive({kind:'repository',threadId:'other',payload:{repositories:[]}}));
+  await expect(page.getByRole('button',{name:'#44 Improve microphone feedback'})).toBeVisible();
+});

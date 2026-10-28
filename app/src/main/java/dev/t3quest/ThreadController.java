@@ -36,6 +36,9 @@ public final class ThreadController {
     public void action(String action, JSONObject payload) {
         if(composer.action(action,payload))return;
         switch(action) {
+            case "loadRepository":
+                if(threadId!=null&&threadId.equals(payload.optString("threadId")))fetch("repository","/api/threads/"+encoded(threadId)+"/repository");
+                break;
             case "loadHistory":
                 if (threadId!=null && threadId.equals(payload.optString("threadId"))) {
                     String cursor = payload.optString("cursor");
@@ -74,7 +77,7 @@ public final class ThreadController {
                     if(activity.isDestroyed() || epoch!=generation)return;
                     JSONObject payload=new JSONObject();
                     try { payload.put("message", "Could not load " + (kind.equals("history")?"older messages":kind.equals("item")?"activity output":"live updates") + ". " + error.getMessage() + " · Keep the laptop bridge running."); } catch(Exception ignored) { }
-                    web.send("error",id,payload);
+                    web.send(kind.equals("repository")?"repositoryError":"error",id,payload);
                 });
             } finally {
                 if(kind.equals("snapshot"))handler.post(() -> {
