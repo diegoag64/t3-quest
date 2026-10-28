@@ -59,3 +59,10 @@ The scoped acceptance criteria are satisfied by the source comparisons, syntheti
 Version 0.6.0 (code 8) is available at `app/build/outputs/apk/debug/app-debug.apk`. Changes are committed locally; they have not been pushed. The bridge is running with the existing credentials. The centered Layout SDK reader, compact parent, and explicit WebView dimensions remain intact.
 
 Remaining checks require the user: install the new APK and repeat centered open/back, resume, scroll, and controller-focus checks during Beat Saber; configure hosted transcription and an operate-scoped pairing when ready; then verify microphone capture and reviewed sending. No real messages, GitHub mutations, microphone capture, or paid transcription were used during this iteration. Repository discovery still requires a linked GitHub PR, and issue ordering is recent activity rather than an inferred execution pipeline.
+
+
+## Live desktop environment verification
+
+After the user authorized a restart, the integrated Nightly copy reused the existing profile and connected both enabled environments. The bridge returned 50 threads across the laptop and remote PC. A read-only history request succeeded for each environment. Quest retained its existing bridge address and token.
+
+The device smoke test now accepts `-e requireEnvironments 2`. It filters each connected environment, checks row ownership, opens a thread, and verifies that its history matches the selected scoped ID. The live Quest run passed for both environments, including settled threads, scrolling, stable parent geometry, and reader cleanup. Private screenshots remain ignored. See the final section of [validation.md](validation.md) for the evidence and remaining voice, sign-in, and in-song focus checks.

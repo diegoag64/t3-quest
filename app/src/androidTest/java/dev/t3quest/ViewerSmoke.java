@@ -81,9 +81,25 @@ public class ViewerSmoke extends Instrumentation {
     final int task=compact.getTaskId(), display=compact.getDisplay().getDisplayId();
     final View originalDecor=compact.getWindow().getDecorView();final WebView originalWeb=web(originalDecor);
     final String originalSize=size(compact);
-    for(int cycle=0;cycle<2;cycle++){
+    org.json.JSONArray environments=null;
+    if(args!=null&&args.getString("requireEnvironments")!=null){
+      int minimum=Integer.parseInt(args.getString("requireEnvironments"));
+      await(compact,"new Set([...QuestTest.state.threads,...QuestTest.state.settledThreads].filter(t=>t.environmentConnected).map(t=>t.environmentId).filter(Boolean)).size>="+minimum);
+      String encoded=js(compact,"JSON.stringify([...new Set([...QuestTest.state.threads,...QuestTest.state.settledThreads].filter(t=>t.environmentConnected).map(t=>t.environmentId).filter(Boolean))])");
+      environments=new org.json.JSONArray((String)new org.json.JSONTokener(encoded).nextValue());
+    }
+    int cycles=environments==null?2:Math.max(2,environments.length());
+    for(int cycle=0;cycle<cycles;cycle++){
+      String expectedThread=null;
+      if(environments!=null){
+        String environment=org.json.JSONObject.quote(environments.getString(cycle%environments.length()));
+        js(compact,"(()=>{const filter=document.querySelector('[aria-label=\"Filter by environment\"]');filter.value="+environment+";filter.dispatchEvent(new Event('change'));const settled=document.querySelector('.settled');if(settled)settled.open=true;return true;})()");
+        await(compact,"QuestTest.state.environment==="+environment+" && !!document.querySelector('.thread-row') && [...document.querySelectorAll('.thread-row')].every(row=>[...QuestTest.state.threads,...QuestTest.state.settledThreads].some(t=>t.id===row.dataset.threadId&&t.environmentId==="+environment+"))");
+        expectedThread=js(compact,"document.querySelector('.thread-row').dataset.threadId");
+      }
       js(compact,"window.viewerNavigationSentinel='same-document';document.querySelector('.thread-row').click();true");
       await(compact,"!!document.querySelector('.top-state.live') && !!document.querySelector('.entry')");
+      if(expectedThread!=null)await(compact,"QuestTest.state.selected==="+expectedThread+" && QuestTest.state.detail?.thread?.id==="+expectedThread+" && QuestTest.state.items.length>0");
       String layout=js(compact,"JSON.stringify({viewport:[innerWidth,innerHeight],items:QuestTest.state.items.length,entries:document.querySelectorAll('.entry').length,boxes:['#app','.workspace-body','.conversation','.timeline-scroll','.timeline','.footer'].map(s=>{const n=document.querySelector(s),r=n.getBoundingClientRect(),c=getComputedStyle(n);return {selector:s,width:r.width,height:r.height,top:r.top,scrollHeight:n.scrollHeight,scrollTop:n.scrollTop,display:c.display,flex:c.flex,minHeight:c.minHeight}})})");
       Bundle status=new Bundle();status.putString("stream","Reader layout: "+layout+"\n");sendStatus(0,status);
       if(args!=null && "true".equals(args.getString("layoutProbe"))){result.putString("stream",layout+"\n");finish(Activity.RESULT_OK,result);return;}
@@ -119,6 +135,13 @@ public class ViewerSmoke extends Instrumentation {
       if(!"true".equals(js(compact,"window.viewerNavigationSentinel==='same-document'")))throw new Exception("Parent document reloaded");
       result.putString("mode",spatial?"Layout SDK child":"Inline fallback");
     }
-    result.putString("returned",size(compact));result.putString("stream","PASS: two open/back cycles, stable parent task/display/size/document, reader cleanup, visible scrollable history. Mode: "+result.getString("mode")+". Physical centering requires headset review. "+result.getString("prBrowser","")+"\n");finish(Activity.RESULT_OK,result);
+    if(environments!=null){
+      js(compact,"(()=>{const filter=document.querySelector('[aria-label=\"Filter by environment\"]');filter.value='';filter.dispatchEvent(new Event('change'));return true;})()");
+      await(compact,"QuestTest.state.environment==='' && document.querySelector('[aria-label=\"Filter by environment\"]').value===''");
+      Thread.sleep(250); // Let WebView paint the restored filter before the screenshot.
+      capture(compact,"viewer-environments.png");
+      result.putString("environments","PASS: filtered and read history from "+environments.length()+" connected environments");
+    }
+    result.putString("returned",size(compact));result.putString("stream","PASS: "+cycles+" open/back cycles, stable parent task/display/size/document, reader cleanup, visible scrollable history. Mode: "+result.getString("mode")+". Physical centering requires headset review. "+result.getString("prBrowser","")+" "+result.getString("environments","")+"\n");finish(Activity.RESULT_OK,result);
   }catch(Exception e){result.putString("stream","FAIL: "+e+"\n");finish(Activity.RESULT_CANCELED,result);}}
 }
