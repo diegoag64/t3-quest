@@ -10,7 +10,7 @@ Install dependencies with `npm install`. Install the test browser once:
 node scripts/run-node.mjs node_modules/@playwright/test/cli.js install chromium
 ```
 
-Run `npm run test:browser`. Playwright checks the compact list, expanded reader, narrow fallback, history scrolling, draft review, and navigation. Screenshots and failure traces are saved under ignored `test-results/`. Open the HTML report with `node scripts/run-node.mjs node_modules/@playwright/test/cli.js show-report`.
+Run `npm run test:browser`. The 16 Playwright cases check the compact list, expanded reader, narrow and short fallbacks, history scrolling, draft review, navigation, streaming focus, canceled-load recovery, and stale PR evidence. The clock-driven freshness test runs without waiting five real minutes. Screenshots and failure traces are saved under ignored `test-results/`. Open the HTML report with `node scripts/run-node.mjs node_modules/@playwright/test/cli.js show-report`.
 
 ## Inspect a layout
 

@@ -102,3 +102,10 @@ The browser checks exposed two regressions: the compact list lost its scroll pos
 Live read-only checks validated T3 PR extraction and the fixed GitHub queries using the existing laptop CLI login. One linked repository returned five open PRs and nine open issues with passing, failing, and pending check states. Synthetic tests cover missing access, cached failures, canonical links, request authentication, and stale results. No GitHub mutation or actual thread send was performed.
 
 These overnight changes are not installed or checked on the headset. The installed app remains the previously verified 0.5.0 build. Browser rendering does not prove Horizon OS placement, input focus, or background recording.
+
+
+## 0.6.0 handoff
+
+Version 0.6.0 (code 8) builds both debug and instrumentation APKs. Final lint has zero errors and 17 warnings. The test suites pass 43 Node/DOM cases and 16 Chromium cases. The final reader pass covers uncached child navigation, visible failed commands, resolved requests, history metadata changes, reconnection, canceled request recovery, streaming scroll position, draft selection, and cached PR aging. Screenshots were inspected at compact, wide, narrow, and short fallback sizes. The build is not installed on Quest.
+
+The restarted laptop bridge returns HTTP 200 for authenticated state and repository reads. It reports Connected, 39 active threads, read-only pairing, and no transcription configuration. The private pairing and bridge token are unchanged. Local commits contain synthetic test data only. No real messages, GitHub mutations, or paid transcription calls were made. Further physical placement, Android resume/focus, and live voice checks are deferred to the headset and credential setup.

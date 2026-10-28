@@ -16,9 +16,9 @@ The user authorized autonomous overnight work on October 28, 2026, with conventi
 
 1. Commit the existing tested voice feature. Complete: `ba78f6d`.
 2. Add a committed synthetic preview and real-browser tests. Complete: `58304dd`. The browser caught a real compact-list scroll reset, fixed in `9bb00d5`.
-3. Compare current sidebar and timeline rendering with upstream source. Fix the highest-impact differences and loading, empty, error, and stale states.
+3. Compare current sidebar and timeline rendering with upstream source. Complete: ordering, loading, empty, offline, stale, and request states are covered. The final reliability pass is committed in `173151b`.
 4. Add linked PR visibility and a small read-only repository pipeline using T3 metadata and authenticated GitHub reads where available. Linked PRs are complete in `450f2ed`. The repository reader is complete in `30ec8f0`. Do not infer that work is ready to merge from green CI alone.
-5. Exercise edge cases, finish documentation, build the APK, and review the changes. Make coherent `feat:`, `fix:`, `test:`, and `docs:` commits.
+5. Exercise edge cases, finish documentation, build the APK, and review the changes. Complete for the scoped 0.6.0 companion; see the handoff below.
 
 ## References and constraints
 
@@ -42,12 +42,20 @@ Heartbeat `improve-t3-quest-overnight` resumes this chat every 30 minutes for up
 - Headset-free suite covers compact, wide, narrow, and short fallback viewports. Wide, narrow, compact, PR drawer, and repository screenshots were inspected. The current 42 Node/DOM tests pass. Android build and lint pass with the repository native action.
 - Live read-only checks found 15 linked PRs across 12 T3 threads. A linked repository returned five open PRs and nine open issues, including passing, failing, and pending checks. No messages, comments, or mutations were sent.
 - Pinned/manual active ordering and offline list labels are complete in `e7d6c54`. Narrow PR, empty, and offline browser checks pass. The 420 by 350 fallback test exposed only 68 pixels of history. `a166324` fixes it with a compact-height composer, and the regression now requires more than 120 pixels. All ten browser cases pass and the resulting short-reader screenshot was inspected.
-- Next: audit loading/error recovery and remaining source differences, especially streaming updates, history pagination, PR freshness, and draft focus. Inspect baseline screenshots and add focused regression cases for actual gaps. Finish with a version bump to 0.6.0 and an APK build, without claiming headset verification.
-- The running laptop bridge has not been restarted with these overnight changes yet, and the headset still has the previous 0.5.0 installation. Restart the verified project bridge at the end if useful; avoid requiring USB or waking the headset.
-- An idle-sleep prevention process is running for six hours (exec session 12091). Heartbeat remains active for the next quality passes.
+- The final pass below completes the streaming, pagination, freshness, and draft-focus audit. Version 0.6.0 is built without claiming headset verification.
+- The verified bridge was restarted at its existing LAN address. Authenticated state and repository reads returned HTTP 200. T3 reports Connected with 39 active threads, read-only scope, and no transcription configuration. The headset still has the previous 0.5.0 installation.
+- The six-hour idle-sleep prevention process expires automatically. The improvement heartbeat was stopped after this handoff.
 
 ## Final reliability pass
 
 Browser regressions reproduced three defects before the fixes: uncached child navigation retained the previous title, completed commands with a nonzero exit code were folded away, and history-only metadata updates were ignored. The fixes clear the prior thread context, keep failed commands visible, and include pagination metadata in snapshot comparison. Screenshot inspection also caught a retained PR count and a false beginning-of-history label while an uncached thread was offline; both are cleared.
 
 The reader now releases canceled history, output, and repository loading states on resume. Completed input requests are labeled as history. PR evidence ages after five minutes even without another bridge response. Six additional browser cases cover these states plus streaming scroll anchoring, expanded work, draft focus, and text selection. All 43 Node/DOM and 16 Chromium tests pass. Screenshots of failed command output, stale PRs, uncached offline navigation, compact rows, and the short reader were inspected. Android debug and instrumentation APK builds and lint pass; lint has zero errors and 17 warnings.
+
+## 0.6.0 handoff
+
+The scoped acceptance criteria are satisfied by the source comparisons, synthetic behavior and layout tests, inspected screenshots, read-only integration checks, and Android build/lint results above. This is a focused T3-style companion, not a claim of full desktop feature parity or pixel identity. No further unattended implementation is planned. The heartbeat has been disabled.
+
+Version 0.6.0 (code 8) is available at `app/build/outputs/apk/debug/app-debug.apk`. Changes are committed locally; they have not been pushed. The bridge is running with the existing credentials. The centered Layout SDK reader, compact parent, and explicit WebView dimensions remain intact.
+
+Remaining checks require the user: install the new APK and repeat centered open/back, resume, scroll, and controller-focus checks during Beat Saber; configure hosted transcription and an operate-scoped pairing when ready; then verify microphone capture and reviewed sending. No real messages, GitHub mutations, microphone capture, or paid transcription were used during this iteration. Repository discovery still requires a linked GitHub PR, and issue ordering is recent activity rather than an inferred execution pipeline.
