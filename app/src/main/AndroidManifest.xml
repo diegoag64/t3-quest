@@ -1,0 +1,31 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <queries>
+        <intent><action android:name="android.intent.action.TTS_SERVICE" /></intent>
+    </queries>
+    <application android:label="T3 Quest Lab" android:theme="@style/AppTheme"
+        android:icon="@drawable/ic_notification" android:allowBackup="false" android:dataExtractionRules="@xml/data_extraction_rules"
+        android:usesCleartextTraffic="true">
+        <meta-data android:name="com.oculus.supportedDevices" android:value="quest3|quest3s|questpro|quest2" />
+        <activity android:name=".MainActivity" android:exported="true"
+            android:resizeableActivity="true" android:launchMode="singleTop"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden">
+            <layout android:defaultWidth="420dp" android:defaultHeight="480dp" android:minWidth="320dp" android:minHeight="300dp" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="com.oculus.intent.category.OVERLAY_LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <service android:name=".ProbeService" android:exported="false"
+            android:foregroundServiceType="microphone|mediaPlayback" />
+    </application>
+</manifest>

@@ -1,0 +1,47 @@
+The read-only sidebar and timeline adapt T3 Code's Sidebar.tsx,
+MessagesTimeline.tsx/logic, projectIdentity.ts, and projectIconColors.ts.
+Codex and Claude SVG marks are copied from apps/marketing/public/harnesses.
+Upstream: https://github.com/pingdotgg/t3code
+
+Bundled Markdown libraries:
+- Marked 18.1.2 (MIT), https://github.com/markedjs/marked
+  License: app/src/main/assets/ui/vendor/MARKED_LICENSE.txt
+- DOMPurify 3.4.17 (Apache-2.0 OR MPL-2.0), https://github.com/cure53/DOMPurify
+  License: app/src/main/assets/ui/vendor/DOMPURIFY_LICENSE.txt
+
+T3 Code dark theme colors and compact control geometry are adapted from:
+https://github.com/pingdotgg/t3code/blob/main/packages/shared/src/themePalettes.ts
+https://github.com/pingdotgg/t3code/blob/main/apps/web/src/index.css
+Retrieved 2026-10-28. T3 Quest Lab is an unofficial prototype.
+
+MIT License
+
+Copyright (c) 2026 T3 Tools Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Meta VR Layout SDK 1.0.0 (BOM 1.2026.0.0)
+Copyright Meta Platforms, Inc. and affiliates.
+Distributed under the Oculus SDK License Agreement:
+https://developer.oculus.com/licenses/oculussdk/
+Documentation: https://developers.meta.com/vr/documentation/android-apps/meta-vr-layout-sdk/
+
+AndroidX Activity and Compose libraries are distributed under Apache License 2.0.
+https://www.apache.org/licenses/LICENSE-2.0
+Kotlin and kotlinx.coroutines are distributed under Apache License 2.0.

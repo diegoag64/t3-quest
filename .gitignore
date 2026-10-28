@@ -1,0 +1,16 @@
+.tools/
+.gradle/
+**/build/
+local.properties
+.env
+.state/
+captures/
+node_modules/
+.DS_Store
+.kotlin/
+.env.*
+!.env.example
+*.apk
+*.aab
+*.jks
+*.keystore

@@ -1,0 +1,33 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.plugin.compose'
+}
+
+android {
+    namespace 'dev.t3quest'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'dev.t3quest'
+        minSdk 29
+        targetSdk 34
+        versionCode 6
+        versionName '0.4.1'
+        testInstrumentationRunner 'dev.t3quest.ViewerSmoke'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    buildFeatures { compose true }
+    kotlinOptions { jvmTarget = "17" }
+    buildTypes { debug { debuggable true } }
+}
+
+dependencies {
+    implementation platform('com.meta.metavrx:metavrx-bom:1.2026.0.0')
+    implementation 'com.meta.metavrx.layout:layout-compose-compat'
+    implementation 'com.meta.metavrx.layout:layout-window-compose-compat'
+    implementation 'androidx.activity:activity-compose:1.10.1'
+    implementation 'androidx.compose.foundation:foundation-layout:1.10.6'
+}

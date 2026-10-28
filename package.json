@@ -1,0 +1,24 @@
+{
+  "name": "t3-quest",
+  "version": "0.4.1",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node scripts/run-node.mjs bridge/server.mjs",
+    "test": "node scripts/run-node.mjs --test tests/*.test.mjs",
+    "pair": "node scripts/run-node.mjs scripts/pair.mjs",
+    "connect:quest": "node scripts/run-node.mjs scripts/connect-quest.mjs",
+    "demo:alert": "node scripts/run-node.mjs scripts/demo-alert.mjs",
+    "report": "node scripts/run-node.mjs scripts/report.mjs",
+    "build:android": "bash scripts/build-android.sh",
+    "install:quest": "bash scripts/quest.sh install"
+  },
+  "devDependencies": {
+    "dompurify": "3.4.17",
+    "jsdom": "30.1.3",
+    "marked": "18.1.2"
+  }
+}
