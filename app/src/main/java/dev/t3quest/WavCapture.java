@@ -16,11 +16,14 @@ import java.nio.ByteOrder;
 public final class WavCapture {
     private static final int RATE = 16000;
     private volatile boolean capturing;
+    public volatile double peakDb=-96;
     private AudioRecord recorder;
     private Thread worker;
     private final Context context;
+    private final String filename;
 
-    public WavCapture(Context context) { this.context = context; }
+    public WavCapture(Context context) { this(context,"probe.wav"); }
+    public WavCapture(Context context,String filename) { this.context = context; this.filename=filename; }
 
     public void start(int source) throws Exception {
         if (context.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
@@ -47,7 +50,7 @@ public final class WavCapture {
     }
 
     private void capture() {
-        File output = new File(context.getFilesDir(), "probe.wav");
+        File output = new File(context.getFilesDir(), filename);
         short[] samples = new short[1600];
         ByteBuffer bytes = ByteBuffer.allocate(samples.length * 2).order(ByteOrder.LITTLE_ENDIAN);
         long lastMeter = 0;
@@ -73,6 +76,7 @@ public final class WavCapture {
                     total += count * 2L;
                     LabState.audioBytes = total;
                     LabState.rmsDb = Math.max(-96, 20 * Math.log10(Math.max(1, Math.sqrt(squares / count)) / 32768));
+                    peakDb=Math.max(peakDb,LabState.rmsDb);
                     long now = android.os.SystemClock.elapsedRealtime();
                     if (now - lastMeter >= 1000) {
                         lastMeter = now;

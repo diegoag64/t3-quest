@@ -62,3 +62,30 @@ test('report distinguishes background audio energy from proof of speech and bann
   assert.equal(report.observations.notification, 'No');
   assert.equal(report.serviceStopped, true);
 });
+
+test('Wispr sends base64 WAV with AI context and no conversation content', async () => {
+  const audio=wav();
+  const result=await transcribe(audio, {transcriptionProvider:'wispr',transcriptionUrl:'https://platform-api.wisprflow.ai/api/v1/dash/api',transcriptionKey:'test-key'}, async (url, options) => {
+    assert.equal(options.headers.Authorization,'Bearer test-key');
+    assert.equal(options.headers['Content-Type'],'application/json');
+    assert.deepEqual(JSON.parse(options.body),{audio:audio.toString('base64'),context:{app:{name:'T3 Quest',type:'ai'}}});
+    assert.equal(options.redirect,'error');
+    return Response.json({text:'Check the tests.',detected_language:'en'});
+  });
+  assert.deepEqual(result,{text:'Check the tests.'});
+});
+
+test('OpenRouter sends its JSON audio contract with selectable model and Bearer auth', async () => {
+  for(const model of [undefined,'openai/whisper-large-v3-turbo']){
+    const audio=wav();
+    const result=await transcribe(audio,{transcriptionProvider:'openrouter',transcriptionUrl:'https://openrouter.ai/api/v1/audio/transcriptions',transcriptionKey:'test-key',transcriptionModel:model}, async (url,options)=>{
+      assert.equal(url.href,'https://openrouter.ai/api/v1/audio/transcriptions');
+      assert.equal(options.headers.Authorization,'Bearer test-key');
+      assert.equal(options.headers['Content-Type'],'application/json');
+      assert.equal(options.redirect,'error');
+      assert.deepEqual(JSON.parse(options.body),{model:model||'microsoft/mai-transcribe-2',input_audio:{data:audio.toString('base64'),format:'wav'}});
+      return Response.json({text:'Please run the tests.',usage:{seconds:0.1}});
+    });
+    assert.deepEqual(result,{text:'Please run the tests.'});
+  }
+});

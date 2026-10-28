@@ -2,7 +2,7 @@
 
 A sideloadable Android panel for testing a T3 Code companion during standalone Beat Saber on Quest 3.
 
-Open Beat Saber, bring up the panel, and start a timed test of alerts and microphone capture. The app saves evidence on the headset. A computer bridge displays live T3 threads and conversations through a read-only pairing.
+Open Beat Saber, bring up the panel, and start a timed test of alerts and microphone capture. The app saves evidence on the headset. A computer bridge displays live T3 threads and conversations through a scoped pairing. Voice drafts and explicit sending are available after setup.
 
 ## Run the first test
 
@@ -48,7 +48,19 @@ The prototype uses Meta's Layout SDK to anchor a 1000 × 780 dp child window to 
 
 The viewer displays user messages, assistant Markdown, code blocks, completed-turn activity folds, command output, diffs, and delegated-task cards. Scroll to the top and choose **Load earlier messages** for older history. Expand activity and choose **Load full output** when T3 has omitted a command result from its snapshot. Live updates preserve your reading position; **Latest ↓** returns to the newest content.
 
-The composer is a read-only display of the thread's model, reasoning effort, and mode. Replies, approvals, edits, and voice submission remain on the laptop. Images and file attachments currently appear as labels.
+The composer accepts typed or dictated drafts after the setup below. Approvals and edits to existing messages remain on the laptop. Images and file attachments currently appear as labels.
+
+## Voice drafts and sending
+
+Run `npm run setup:voice` on your laptop. Choose OpenRouter, Wispr Flow, OpenAI, or a compatible custom endpoint, then enter your API key without echoing it. Settings stay in the ignored `.env` file. OpenRouter uses your existing credits through its [transcription endpoint](https://openrouter.ai/docs/guides/overview/multimodal/stt), with `microsoft/mai-transcribe-2` as the default; `openai/whisper-large-v3-turbo` and `mistralai/voxtral-mini-transcribe` are alternatives. Wispr Flow requires [approved developer API access](https://api-docs.wisprflow.ai/quickstart); its adapter sends 16 kHz WAV audio using the documented REST API. The OpenAI preset uses `gpt-transcribe`. Custom endpoints must accept multipart `file` and `model` and return JSON with a `text` field.
+
+The earlier pairing is read-only. In T3 Code, create a fresh direct pairing link with permission to operate threads, then run `npm run pair -- --write`. Paste the link in the terminal. Restart the bridge with `npm run connect:quest` (or `npm start` with your LAN address configured).
+
+In a thread, tap **Microphone**, speak, and tap **Stop & transcribe**. Recording starts while the panel is visible and can continue after you return focus to Beat Saber. It stops after 60 seconds. Review or edit the transcript, then tap **Send**. Messages queue behind active work. Recording and transcription never send a T3 message automatically.
+
+Drafts belong to their selected thread and survive closing the reader. Cancel stops dictation; Discard removes a draft. A failed or uncertain send keeps the same retry ID so retrying does not duplicate a message. An uncertain draft is locked until it is retried or discarded. If Quest silences the microphone during gameplay, focus the panel and record again. Background microphone capture during a song still needs device verification.
+
+The API key stays on the laptop. Dictation recordings are deleted after transcription or cancellation; drafts stay in the app’s private storage. The bridge stores only message hashes and delivery receipts for retries.
 
 ## Build and connect
 

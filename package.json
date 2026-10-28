@@ -1,6 +1,6 @@
 {
   "name": "t3-quest",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -9,6 +9,7 @@
   "scripts": {
     "start": "node scripts/run-node.mjs bridge/server.mjs",
     "test": "node scripts/run-node.mjs --test tests/*.test.mjs",
+    "setup:voice": "python3 scripts/setup-voice.py",
     "pair": "node scripts/run-node.mjs scripts/pair.mjs",
     "connect:quest": "node scripts/run-node.mjs scripts/connect-quest.mjs",
     "demo:alert": "node scripts/run-node.mjs scripts/demo-alert.mjs",

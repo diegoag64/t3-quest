@@ -47,6 +47,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
 
     @Override public void onCreate(Bundle saved) {
         super.onCreate(saved);
+        VoiceDrafts.initialize(this);
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         root = column(); root.setBackgroundColor(BG);
         root.setPadding(dp(12), dp(8), dp(12), dp(8));
@@ -122,6 +123,12 @@ public class MainActivity extends androidx.activity.ComponentActivity {
 
     private void buildConnection(LinearLayout root) {
         heading(root, "Connect your laptop");
+        LinearLayout voiceSetup = card(root, "Voice and sending");
+        voiceSetup.addView(text("On your laptop, configure hosted transcription. The API key stays on the laptop.",13,INK));
+        command(voiceSetup,"npm run setup:voice");
+        voiceSetup.addView(text("Create a fresh T3 pairing link with permission to operate threads, then run:",13,INK));
+        command(voiceSetup,"npm run pair -- --write");
+        voiceSetup.addView(text("Restart the bridge. In a thread: tap Microphone, speak, Stop & transcribe, review the draft, then Send. Recording can continue with game focus and stops after 60 seconds.",13,MUTED));
         root.addView(text("Laptop + Quest on the same Wi-Fi. Keep T3 Code and the bridge running on your laptop.", 13, MUTED));
         LinearLayout first = card(root, "1  Pair the laptop bridge with T3");
         first.addView(text("In T3 Code: Settings → Sharing & access → create a direct pairing link. Use Network access if needed for your chosen address.", 13, INK));
@@ -269,9 +276,9 @@ public class MainActivity extends androidx.activity.ComponentActivity {
 
     private void updateConnectionHelp() {
         String value = LabState.connection;
-        if (value.equals("t3-read-only · Connected")) connectionHelp.setText("Connected to T3 Code. Live threads are in Threads. Run a headset test for background alerts.");
+        if (value.equals("t3-read-only · Connected") || value.equals("t3-connected · Connected")) connectionHelp.setText("Connected to T3 Code. Live threads are in Threads. Run a headset test for background alerts.");
         else if (value.equals("demo · Connected")) connectionHelp.setText("Laptop connected · demo only. Run npm run pair with a fresh T3 link, then restart connect:quest for real threads.");
-        else if (value.startsWith("t3-read-only")) connectionHelp.setText("Laptop bridge reached; T3 is unavailable. Keep T3 running. If access expired, run npm run pair and restart the bridge.\n" + value);
+        else if (value.startsWith("t3-read-only") || value.startsWith("t3-connected")) connectionHelp.setText("Laptop bridge reached; T3 is unavailable. Keep T3 running. If access expired, run npm run pair and restart the bridge.\n" + value);
         else connectionHelp.setText(value);
     }
 
@@ -284,7 +291,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
     }
 
     private void requestStart() {
-        if (LabState.running || transcribing) return;
+        if (LabState.running || transcribing || VoiceService.activeThread!=null) return;
         ArrayList<String> permissions = new ArrayList<>();
         if (record.isChecked() && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) permissions.add(Manifest.permission.RECORD_AUDIO);
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) permissions.add(Manifest.permission.POST_NOTIFICATIONS);
@@ -319,7 +326,7 @@ public class MainActivity extends androidx.activity.ComponentActivity {
     }
 
     private void transcribe() {
-        if (LabState.running || transcribing) return;
+        if (LabState.running || transcribing || VoiceService.activeThread!=null) return;
         String url = settings().getString("bridgeUrl", ""), token = settings().getString("bridgeToken", "");
         if (url.isEmpty()) { selectPage(1); toast("Connect your laptop first."); return; }
         if (!LabState.transcriptionConfigured) { toast("Set TRANSCRIPTION_URL on the laptop bridge, then check the connection."); return; }
@@ -348,9 +355,10 @@ public class MainActivity extends androidx.activity.ComponentActivity {
             String value = LabState.connection;
             boolean good = value.endsWith(" · Connected");
             boolean configured = !settings().getString("bridgeUrl", "").isEmpty();
-            connection.setText(good ? "●  " + (LabState.bridgeMode.equals("demo") ? "Laptop connected · demo" : "T3 Code connected · read only") : configured ? "○  " + value : "○  Laptop not connected · demo available");
+            connection.setText(good ? "●  " + (LabState.bridgeMode.equals("demo") ? "Laptop connected · demo" : (LabState.canSend ? "T3 Code connected · sending enabled" : "T3 Code connected · read only")) : configured ? "○  " + value : "○  Laptop not connected · demo available");
             connection.setTextColor(good ? BLUE : MUTED);
             if (LabState.lastBridgeSuccess > 0 && !good) connection.append("\nShowing last received threads");
+            if(VoiceService.activeThread!=null)connection.append(" · Voice draft in progress");
             transcript.setText(LabState.transcript); events.setText(LabState.recentEvents());
             start.setEnabled(!LabState.running && !transcribing); stop.setEnabled(LabState.running);
             start.setText(duration.getSelectedItemPosition() == 0 ? "Start 90s test" : "Start 3m test");

@@ -42,7 +42,7 @@ public final class ThreadWebView extends WebView {
         CookieManager.getInstance().setAcceptThirdPartyCookies(this, false);
         addJavascriptInterface(new Object() {
             @JavascriptInterface public void request(String action, String json) {
-                if (json == null || json.length() > 16000) return;
+                if (json == null || json.length() > 80000) return;
                 try {
                     JSONObject payload = new JSONObject(json);
                     activity.runOnUiThread(() -> { if (!activity.isDestroyed()) actions.onAction(action, payload); });

@@ -21,7 +21,7 @@ The panel requests a 420 × 480 dp default window and permits 320 × 300 dp or l
 
 `MainActivity` is a `ComponentActivity` with a Meta Layout SDK `SpatialScene`. Its native list, connection, and test views remain in one `AndroidView` in the primary window. `ReadingWindowHost` conditionally emits one `SpatialWindow` with the stable key `thread-reader`, a 1000 × 780 dp size, `WindowAnchor.Center`, and `OffsetStep.Near` on the z axis. Opening another thread inside the reader reuses that window.
 
-The child has its own `ThreadWebView` and read-only `ThreadController`, created with the child window's context. Back removes the child; disposal cancels polling and destroys its WebView. The list document remains mounted underneath. External window dismissal also returns to the list. Unsupported devices, terminal placement failures, and capacity/preemption states fall back to the existing in-panel conversation path. This fallback never launches another task.
+The child has its own `ThreadWebView` and `ThreadController`, created with the child window's context. Back removes the child; disposal cancels polling and destroys its WebView. The list document remains mounted underneath. External window dismissal also returns to the list. Unsupported devices, terminal placement failures, and capacity/preemption states fall back to the existing in-panel conversation path. This fallback never launches another task.
 
 The former separate-task transition used `LAUNCH_ADJACENT`, which moved the conversation beside the original panel. Version 0.3.1 removed that path. Version 0.4.0 adds the Layout SDK child without restoring the separate activity or changing the primary window's bounds. The center anchor is a placement request. The user verified centered opening and return to the unchanged compact panel during Beat Saber on Quest 3.
 
@@ -35,7 +35,7 @@ The notification probe uses Android `NotificationManager`. The chime is a separa
 
 ## T3 integration
 
-The initial adapter requests a bearer session through `/oauth/token` with `orchestration:read`. It reads `/api/orchestration/shell` with the `x-t3-orchestration-protocol: 2` header. It reads bounded conversation projections and cursor-based activity history over HTTP. Full tool output uses a short-lived WebSocket ticket and the single `orchestration.getTurnItem` read RPC. The bridge exposes no generic RPC forwarding or thread mutation endpoint.
+The initial adapter requests a bearer session through `/oauth/token` with `orchestration:read`. It reads `/api/orchestration/shell` with the `x-t3-orchestration-protocol: 2` header. It reads bounded conversation projections and cursor-based activity history over HTTP. Full tool output uses a short-lived WebSocket ticket and the single `orchestration.getTurnItem` read RPC. The bridge exposes one narrow message endpoint after an operate-scoped pairing; it does not expose generic RPC forwarding.
 
 The first snapshot establishes a baseline. Later snapshots emit alerts for a completed run, a failed run, or a new pending input request. Active runs and pending background tasks prevent a thread from being labeled finished. Repeated snapshots do not repeat the same alert.
 
@@ -45,7 +45,7 @@ T3 Connect is a cloud identity and tunnel system. It is not the name of Tailscal
 
 ## Data handling
 
-The computer bridge listens on loopback by default. Wi-Fi testing explicitly enables LAN access. Every endpoint requires the bridge token, and requests with browser `Origin` headers are rejected. The bridge does not allow arbitrary RPC forwarding or thread mutations.
+The computer bridge listens on loopback by default. Wi-Fi testing explicitly enables LAN access. Every endpoint requires the bridge token, and requests with browser `Origin` headers are rejected. The bridge only permits a validated message dispatch; other thread mutations and generic RPC forwarding remain unavailable.
 
 The prototype permits cleartext HTTP for local testing. Use a trusted private network. Do not expose the bridge's HTTP port to the public internet. T3 public endpoints require HTTPS in the pairing helper. The bridge refuses redirects when sending credentials or audio.
 
@@ -59,9 +59,9 @@ The packaged renderer uses Marked for Markdown and DOMPurify with an explicit al
 
 Completed turns fold commentary and tool activity before the final assistant reply. Earlier pages merge by source item identity and position. A live refresh retains loaded older history, expanded disclosures, and the reading anchor. Output is hydrated on request through the read-only item RPC. Threads pause polling when the activity pauses; timed test notifications remain separate.
 
-## Next decision
+## Remaining device checks
 
-If the panel, alert, and microphone tests pass during a song, add a reviewed send action through T3's command API. Then evaluate push-to-talk or wake-word activation. If hidden-panel capture fails, retain voice input while the panel is focused and use it between songs.
+Voice drafts and reviewed sending are implemented in 0.5.0. Verify microphone capture and transcription during a song. Wake-word activation is not implemented. If background capture is silenced, use the microphone while the panel has focus.
 
 Platform references:
 
@@ -75,3 +75,15 @@ Platform references:
 - [T3 HTTP contracts](https://github.com/pingdotgg/t3code/blob/bed923986fbcbe8279f23b9367efde1596bde1f9/packages/contracts/src/environmentHttp.ts)
 
 - [Meta Layout SDK anchors and offsets](https://developers.meta.com/vr/documentation/android-apps/meta-vr-layout-anchors/)
+
+## Voice composer (0.5.0)
+
+`VoiceService` starts a microphone foreground service only from a user action in the visible panel. It records at most 60 seconds, then releases the microphone before uploading the WAV to the bridge's configured hosted transcription endpoint. It does not request audio focus or send a T3 message. Cancel discards the recording; unique recording filenames prevent a cancelled upload from deleting a subsequent recording. Android service restart is disabled.
+
+`VoiceDrafts` keeps text, state, and retry IDs in app-private per-thread preferences. `ThreadComposer` captures the destination thread before asynchronous work and updates the current reader through composer events. Snapshot refreshes preserve the mounted textarea and selection. An interrupted send becomes uncertain on the next app launch; the same draft can be retried with the same IDs.
+
+`POST /api/threads/:id/messages` accepts only text and a UUID request ID. It checks `orchestration:operate`, builds `message.dispatch` with user/mobile attribution and `queue_after_active`, and waits for T3's command receipt. The thread's model and runtime policy are inherited. The bridge binds retry IDs to message hashes in `.state/message-receipts`; T3's persistent command receipts protect retries after a lost response. The bridge cannot approve runtime requests, change settings, or dispatch arbitrary commands through this endpoint.
+
+The default pairing stays read-only. `npm run pair -- --write` requests `orchestration:read orchestration:operate` using a fresh pairing credential. `npm run setup:voice` writes hosted transcription settings and a hidden-input API key to ignored `.env` with mode 0600. The bridge reads it on startup. No hosted service is usable until the user supplies its credentials.
+
+References: [Android microphone services](https://developer.android.com/develop/background-work/services/fgs/service-types#microphone), [OpenAI file transcription](https://developers.openai.com/api/docs/guides/speech-to-text).

@@ -25,6 +25,7 @@ public final class LabState {
     public static volatile String bridgeMode = "";
     public static volatile long lastBridgeSuccess = 0;
     public static volatile boolean transcriptionConfigured = false;
+    public static volatile boolean canSend = false;
     public static volatile String transcript = "Record a test, then replay it here. Optional transcription uses your computer bridge.";
     public static volatile JSONArray threads = new JSONArray();
     public static volatile JSONArray settledThreads = new JSONArray();
@@ -38,6 +39,7 @@ public final class LabState {
         bridgeMode = result.optString("mode");
         connection = bridgeMode + " · " + result.optString("status");
         transcriptionConfigured = result.optBoolean("transcriptionConfigured");
+        canSend = result.optBoolean("canSend");
         lastBridgeSuccess = SystemClock.elapsedRealtime();
     }
 

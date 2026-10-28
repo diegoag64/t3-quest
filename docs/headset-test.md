@@ -1,6 +1,19 @@
 # Test while Beat Saber runs
 
-Install the APK using [the setup guide](setup.md). Keep the bridge address empty for these tests.
+Install the APK using [the setup guide](setup.md). The standalone microphone and notification probes do not require a bridge.
+
+## Dictate a thread message
+
+Configure a hosted provider and pair with thread-operate permission using [voice setup](../README.md#voice-drafts-and-sending). Keep the laptop bridge running.
+
+1. Open a thread over Beat Saber and tap the microphone. Grant permission if requested, then tap again.
+2. Return focus to the game and speak a short, distinctive message intended for that thread.
+3. Tap **Stop & transcribe**, or let the 60-second recording limit stop it.
+4. Verify that your words appear in the draft and that nothing was sent yet. Check recognition accuracy with the game's audio playing.
+5. Close and reopen the reader. Confirm that the draft is preserved in the same thread.
+6. Review or edit the draft, then tap **Send**. Confirm that it appears once in the laptop's T3 thread. Active work receives the message in its queue.
+
+If the service cannot capture speech while the game has focus, repeat with the panel focused. Record both outcomes. Provider setup and a successful API request alone do not establish that gameplay capture works.
 
 ## Establish a baseline
 

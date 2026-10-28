@@ -22,10 +22,16 @@ public final class BridgeClient {
     }
 
     public static JSONObject request(String base, String token, String path, File audio) throws Exception {
+        return request(base,token,path,audio,null);
+    }
+    public static JSONObject post(String base,String token,String path,JSONObject body) throws Exception {
+        return request(base,token,path,null,body);
+    }
+    private static JSONObject request(String base, String token, String path, File audio, JSONObject body) throws Exception {
         HttpURLConnection connection = (HttpURLConnection) new URL(normalizeUrl(base) + path).openConnection();
         connection.setInstanceFollowRedirects(false);
         connection.setConnectTimeout(5000);
-        connection.setReadTimeout(audio == null ? 20000 : 90000);
+        connection.setReadTimeout(audio == null ? 30000 : 90000);
         connection.setRequestProperty("Authorization", "Bearer " + token);
         connection.setRequestProperty("Accept", "application/json");
         try {
@@ -39,8 +45,18 @@ public final class BridgeClient {
                     while ((n = input.read(chunk)) > 0) out.write(chunk, 0, n);
                 }
             }
+            if(body!=null){
+                byte[] data=body.toString().getBytes(StandardCharsets.UTF_8);
+                connection.setRequestMethod("POST");connection.setDoOutput(true);
+                connection.setRequestProperty("Content-Type","application/json");connection.setFixedLengthStreamingMode(data.length);
+                try(java.io.OutputStream out=connection.getOutputStream()){out.write(data);}
+            }
             int status = connection.getResponseCode();
-            if (status != 200) throw new IllegalStateException("Bridge HTTP " + status + (status == 401 ? " · check the bridge token" : ""));
+            if (status != 200) {
+                String message="Bridge HTTP "+status+(status==401?" · check the bridge token":"");
+                try(InputStream error=connection.getErrorStream()) { if(error!=null){byte[] data=new byte[4096];int used=0,n;while(used<data.length&&(n=error.read(data,used,data.length-used))>0)used+=n;String detail=new JSONObject(new String(data,0,used,StandardCharsets.UTF_8)).optString("error");if(!detail.isEmpty())message=detail;} }catch(Exception ignored){}
+                throw new IllegalStateException(message);
+            }
             try (InputStream input = connection.getInputStream(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
                 byte[] chunk = new byte[8192]; int n;
                 while ((n = input.read(chunk)) > 0) {
@@ -49,7 +65,7 @@ public final class BridgeClient {
                 }
                 JSONObject result = new JSONObject(out.toString(StandardCharsets.UTF_8.name()));
                 if (path.equals("/api/state") &&
-                        (!(result.optString("mode").equals("demo") || result.optString("mode").equals("t3-read-only"))
+                        (!(result.optString("mode").equals("demo") || result.optString("mode").equals("t3-read-only") || result.optString("mode").equals("t3-connected"))
                         || result.optJSONArray("threads") == null || !result.has("status"))) {
                     throw new IllegalStateException("This address is not a compatible T3 Quest bridge");
                 }

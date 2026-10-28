@@ -11,6 +11,7 @@ import java.util.concurrent.*;
 public final class ThreadController {
     private final Activity activity;
     private final ThreadWebView web;
+    private final ThreadComposer composer;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final ExecutorService network = Executors.newSingleThreadExecutor();
     private String threadId;
@@ -18,21 +19,22 @@ public final class ThreadController {
     private int generation;
 
     public ThreadController(Activity activity, ThreadWebView web) {
-        this.activity=activity; this.web=web;
+        this.activity=activity; this.web=web; this.composer=new ThreadComposer(activity,web);
     }
     public boolean isOpen() { return threadId!=null; }
     public String selectedThread() { return threadId; }
     public void open(String id) {
         generation++; loading=false; handler.removeCallbacks(poll);
         threadId=id;
-        web.showThread(id);
+        web.showThread(id);composer.open(id);
         refresh();
     }
     public void close() {
         generation++; loading=false; threadId=null; handler.removeCallbacks(poll);
-        web.showList();
+        web.showList();composer.close();
     }
     public void action(String action, JSONObject payload) {
+        if(composer.action(action,payload))return;
         switch(action) {
             case "loadHistory":
                 if (threadId!=null && threadId.equals(payload.optString("threadId"))) {
@@ -89,7 +91,7 @@ public final class ThreadController {
         new AlertDialog.Builder(activity).setTitle("Open link in browser?").setMessage(url).setNegativeButton("Cancel",null)
             .setPositiveButton("Open",(dialog,which)->{try{activity.startActivity(new Intent(Intent.ACTION_VIEW,uri));}catch(Exception ignored){}}).show();
     }
-    public void resume(){resumed=true;refresh();}
-    public void pause(){resumed=false;generation++;loading=false;handler.removeCallbacks(poll);}
-    public void dispose(){pause();handler.removeCallbacksAndMessages(null);network.shutdownNow();}
+    public void resume(){resumed=true;composer.resume();refresh();}
+    public void pause(){resumed=false;composer.pause();generation++;loading=false;handler.removeCallbacks(poll);}
+    public void dispose(){pause();composer.dispose();handler.removeCallbacksAndMessages(null);network.shutdownNow();}
 }

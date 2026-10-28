@@ -40,14 +40,14 @@ export function parsePairingUrl(input, serverOrigin) {
   return { origin: normalizeOrigin(host), credential };
 }
 
-export async function exchangePairing(input, fetcher = fetch, serverOrigin) {
+export async function exchangePairing(input, fetcher = fetch, serverOrigin, {write = false} = {}) {
   const { origin, credential } = parsePairingUrl(input, serverOrigin);
   const body = new URLSearchParams({
     grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
     subject_token: credential,
     subject_token_type: 'urn:t3:params:oauth:token-type:environment-bootstrap',
     requested_token_type: 'urn:ietf:params:oauth:token-type:access_token',
-    scope: 'orchestration:read',
+    scope: write ? 'orchestration:read orchestration:operate' : 'orchestration:read',
     client_label: 'T3 Quest bridge',
     client_device_type: 'desktop',
   });
@@ -64,7 +64,7 @@ export async function exchangePairing(input, fetcher = fetch, serverOrigin) {
   if (typeof result.access_token !== 'string' || !/^bearer$/i.test(result.token_type ?? '')) {
     throw new Error('Expected a direct-pairing bearer session. Cloud DPoP login is not implemented in this prototype.');
   }
-  return { origin, token: result.access_token, pairedAt: new Date().toISOString() };
+  return { origin, token: result.access_token, scopes: (result.scope || 'orchestration:read').split(' '), pairedAt: new Date().toISOString() };
 }
 
 export async function readShell(session, fetcher = fetch) {

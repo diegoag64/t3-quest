@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { join } from 'node:path';
 import { networkInterfaces } from 'node:os';
+import { canOperate, createMessageSender, validateMessage } from './thread-send.mjs';
 import { ThreadMonitor, readShell } from './t3.mjs';
 import { readThreadData, threadDetail, historyPage, validateId, readTurnItem } from './thread-view.mjs';
 
@@ -41,12 +42,22 @@ export async function transcribe(audio, config, fetcher = fetch) {
   if (!config.transcriptionUrl) throw Object.assign(new Error('Set TRANSCRIPTION_URL on the computer bridge'), { status: 503 });
   const url = new URL(config.transcriptionUrl);
   if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Unsupported transcription URL');
-  const form = new FormData();
-  form.set('file', new Blob([audio], { type: 'audio/wav' }), 'probe.wav');
-  form.set('model', config.transcriptionModel || 'whisper-1');
+  const wispr = config.transcriptionProvider === 'wispr';
+  const headers = config.transcriptionKey ? { Authorization: `Bearer ${config.transcriptionKey}` } : {};
+  let body;
+  if(wispr){
+    headers['Content-Type']='application/json';
+    body=JSON.stringify({audio:audio.toString('base64'),context:{app:{name:'T3 Quest',type:'ai'}}});
+  }else if(config.transcriptionProvider === 'openrouter'){
+    headers['Content-Type']='application/json';
+    body=JSON.stringify({model:config.transcriptionModel || 'microsoft/mai-transcribe-2',input_audio:{data:audio.toString('base64'),format:'wav'}});
+  }else{
+    body = new FormData();
+    body.set('file', new Blob([audio], { type: 'audio/wav' }), 'dictation.wav');
+    body.set('model', config.transcriptionModel || (url.hostname==='api.openai.com' ? 'gpt-transcribe' : 'whisper-1'));
+  }
   const response = await fetcher(url, {
-    method: 'POST', body: form, redirect: 'error', signal: AbortSignal.timeout(80_000),
-    headers: config.transcriptionKey ? { Authorization: `Bearer ${config.transcriptionKey}` } : {},
+    method: 'POST', body, redirect: 'error', signal: AbortSignal.timeout(80_000), headers,
   });
   if (!response.ok) throw Object.assign(new Error(`Transcription endpoint returned HTTP ${response.status}`), { status: 502 });
   const result = await response.json();
@@ -54,7 +65,7 @@ export async function transcribe(audio, config, fetcher = fetch) {
   return { text: result.text.slice(0, 20_000) };
 }
 
-export function makeServer({ token, state, demoComplete, config = {}, fetcher = fetch, threadRead }) {
+export function makeServer({ token, state, demoComplete, config = {}, fetcher = fetch, threadRead, threadSend }) {
   let transcribing = false;
   return createServer(async (request, response) => {
     const send = (code, value) => {
@@ -67,6 +78,14 @@ export function makeServer({ token, state, demoComplete, config = {}, fetcher = 
     const path = request.url;
     try {
       if (request.method === 'GET' && path === '/api/state') return send(200, state());
+      if (request.method === 'POST' && /^\/api\/threads\/[^/]+\/messages$/.test(path)) {
+        if (!threadSend) return send(403,{error:'Sending is unavailable. Pair with npm run pair -- --write.'});
+        if (request.headers['content-type'] !== 'application/json') return send(415,{error:'Send application/json'});
+        let id, input;
+        try { id=validateId(decodeURIComponent(path.split('/')[3])); input=validateMessage(JSON.parse((await readBody(request,64000)).toString())); }
+        catch(error) { return send(error.status || 400,{error:error.status ? error.message : 'Invalid message JSON or thread ID'}); }
+        return send(200,await threadSend(id,input));
+      }
       if (request.method === 'GET' && path.startsWith('/api/threads/')) {
         if (!threadRead) return send(409, { error: 'Connect the bridge to T3 to read conversations.' });
         const url = new URL(path, 'http://bridge.local');
@@ -119,10 +138,13 @@ export async function loadBridgeToken(directory = join(ROOT, '.state')) {
 }
 
 export async function main() {
+  try { process.loadEnvFile(join(ROOT,'.env')); } catch(error) { if(error.code!=='ENOENT')throw error; }
+
   const directory = join(ROOT, '.state');
   const token = await loadBridgeToken(directory);
   const session = await privateJson(join(directory, 't3-session.json'));
   const monitor = new ThreadMonitor();
+  let canSend = false, capabilitiesAt = 0;
   let status = session ? 'Connecting to T3' : 'Connected';
   let updatedAt = null;
   let timer;
@@ -134,6 +156,7 @@ export async function main() {
   async function poll() {
     try {
       monitor.apply(await readShell(session));
+      if(Date.now()-capabilitiesAt>30000){canSend=await canOperate(session);capabilitiesAt=Date.now();}
       status = 'Connected'; updatedAt = new Date().toISOString();
     } catch (error) {
       status = error.message.startsWith('T3 HTTP') || error.message.startsWith('Unsupported T3') ? error.message : 'T3 unreachable';
@@ -159,8 +182,9 @@ export async function main() {
   }
   const server = makeServer({
     token, threadRead: session ? threadRead : null,
+    threadSend: session ? createMessageSender(session,join(directory,'message-receipts')) : null,
     state: () => ({
-      mode: session ? 't3-read-only' : 'demo', status, updatedAt,
+      mode: session ? (canSend ? 't3-connected' : 't3-read-only') : 'demo', status, updatedAt, canSend,
       threads: session ? monitor.threads : demo.threads,
       settledThreads: session ? monitor.settledThreads : [],
       events: session ? monitor.events : demo.events,
@@ -172,7 +196,7 @@ export async function main() {
       demo.events.push({ id: randomUUID(), title: 'Authentication tests', message: 'Demo thread finished', time: new Date().toISOString() });
       demo.events = demo.events.slice(-100);
     },
-    config: { transcriptionUrl: process.env.TRANSCRIPTION_URL, transcriptionModel: process.env.TRANSCRIPTION_MODEL, transcriptionKey: process.env.TRANSCRIPTION_KEY },
+    config: { transcriptionProvider: process.env.TRANSCRIPTION_PROVIDER, transcriptionUrl: process.env.TRANSCRIPTION_URL, transcriptionModel: process.env.TRANSCRIPTION_MODEL, transcriptionKey: process.env.TRANSCRIPTION_KEY },
   });
   server.requestTimeout = 90_000;
   server.headersTimeout = 10_000;
@@ -183,7 +207,7 @@ export async function main() {
     server.once('error', reject);
     server.listen(port, host, resolve);
   });
-  console.log(`T3 Quest bridge: http://${host}:${port} (${session ? 'T3 read-only' : 'demo'})`);
+  console.log(`T3 Quest bridge: http://${host}:${port} (${session ? 'T3 connected' : 'demo'})`);
   console.log('Bridge access token: read .state/bridge-token and paste it into the headset app.');
   if (host === '0.0.0.0') {
     for (const values of Object.values(networkInterfaces())) {

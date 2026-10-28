@@ -6,7 +6,7 @@ Checked on October 28, 2026, on Apple Silicon macOS.
 | --- | --- |
 | Android debug APK compilation | Passed |
 | Android lint | No errors. Remaining warnings concern target API age, legacy backup configuration, and English-only UI strings. |
-| Node and DOM tests | 27 passed: authentication, read-only routes/RPC, Markdown sanitization, history merge, turn folding, sidebar rendering, same-document navigation, restored list state, and stale-response handling |
+| Node and DOM tests | 35 passed: authentication, scoped sending, retry deduplication, OpenRouter, Wispr and multipart transcription adapters, draft review, Markdown sanitization, history merge, turn folding, sidebar rendering, same-document navigation, restored list state, and stale-response handling |
 | Shell script syntax | Passed |
 | APK packaging | Package `dev.t3quest`, minimum API 29, target API 34 |
 | Quest installation | Passed on a connected Quest 3. ADB installed the debug APK successfully. |
@@ -40,7 +40,7 @@ With the headset awake and the paired laptop bridge running:
 .tools/android-sdk/platform-tools/adb shell am instrument -w dev.t3quest.test/dev.t3quest.ViewerSmoke
 ```
 
-The separate instrumentation APK opens the production list, clicks its first thread, waits for a real conversation, checks the read-only composer, and returns to the list twice. It asserts that the parent task ID, display ID, window size, WebView instance, and JavaScript document remain unchanged, and that Back releases the reader. It reports whether a spatial child or the inline fallback was used. Add `-e requireSpatial true` before the runner to fail if the SDK cannot place the child. Physical centering still requires headset review. It saves app-only captures as `files/viewer-compact.png` and `files/viewer-expanded.png` in the target app's private storage. It does not send messages or start a microphone test. Look for `PASS`; a sleeping headset is a timeout, not a passed check.
+The separate instrumentation APK opens the production list, clicks its first thread, waits for a real conversation, checks that the composer cannot send an empty draft, and returns to the list twice. It asserts that the parent task ID, display ID, window size, WebView instance, and JavaScript document remain unchanged, and that Back releases the reader. It reports whether a spatial child or the inline fallback was used. Add `-e requireSpatial true` before the runner to fail if the SDK cannot place the child. Physical centering still requires headset review. It saves app-only captures as `files/viewer-compact.png` and `files/viewer-expanded.png` in the target app's private storage. It does not send messages or start a microphone test. Look for `PASS`; a sleeping headset is a timeout, not a passed check.
 
 ## Automatic resize investigation
 
@@ -84,3 +84,11 @@ The spatial reader's WebView now has explicit `MATCH_PARENT` layout parameters. 
 Version 0.4.1 is installed on Quest 3. Two open/back cycles passed with a real Layout SDK child: the root measured 780 CSS pixels high, the timeline viewport measured approximately 587 pixels high, and visible entries intersected the viewport at both ends of a scroll. The parent task, display, size, WebView, and document remained unchanged. The tested thread contained 75 activity items and 18 rendered entries. The test also loads older history when pagination is available; this final thread did not require pagination. The corrected capture is `captures/history-fixed-reader.png`.
 
 The test now fails on a collapsed viewport or lack of visible entries, even when history is present in the DOM. Optional `-e layoutProbe true` prints layout metrics without conversation text.
+
+## Voice drafts and scoped sending (0.5.0)
+
+Version 0.5.0 (code 7) is built and installed on the connected Quest 3. Android lint passes with no errors. All 35 Node/DOM tests pass. OpenRouter JSON, Wispr Flow REST and OpenAI-compatible multipart requests are tested with mocked providers, including the audio format and authentication headers. Message tests cover operate-scope enforcement, queued dispatch, persistent retry receipts, uncertain delivery, and rejected arbitrary RPC fields. DOM tests check that transcription does not send a message and that updates preserve an editable draft.
+
+The device test passed with `requireSpatial=true`: two open/back cycles retained the parent panel, the Layout SDK child remained 1000 × 780 CSS pixels, and the history viewport measured about 510 pixels high. The new composer was visible with an empty draft and disabled Send. A separate temporary draft verified persistence and preserved its request ID across an uncertain-delivery state; the test removed only its own temporary draft. The app-only screenshot was visually inspected and saved as `captures/voice-composer-quest.png`. The updated laptop bridge is running with the existing read-only session.
+
+No hosted API key is configured, and the existing T3 pairing is read-only. Live transcription, real message delivery, and microphone capture while Beat Saber has focus remain unverified. The user chose to configure credentials later. No real messages or microphone recording were started by these automated checks.

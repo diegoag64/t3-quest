@@ -42,6 +42,15 @@ public class ViewerSmoke extends Instrumentation {
     Bundle result=new Bundle();result.putString("stream",report.toString());finish(Activity.RESULT_OK,result);
   }
   @Override public void onStart(){Bundle result=new Bundle();try{
+    String draftId="test-"+java.util.UUID.randomUUID();
+    Context context=getTargetContext();
+    try{
+      VoiceDrafts.text(context,draftId,"Draft persistence check");
+      String requestId=VoiceDrafts.read(context,draftId).getString("requestId");
+      VoiceDrafts.update(context,draftId,"uncertain","Test interrupted delivery");
+      if(!VoiceDrafts.read(context,draftId).getString("text").equals("Draft persistence check")||!VoiceDrafts.read(context,draftId).getString("requestId").equals(requestId))throw new Exception("Draft or retry identity was lost");
+      if(!context.getSharedPreferences("drafts",0).getString(draftId,"").contains("Draft persistence check"))throw new Exception("Draft was not persisted");
+    }finally{context.getSharedPreferences("drafts",0).edit().remove(draftId).commit();}
     Activity compact=startActivitySync(new Intent(getTargetContext(),MainActivity.class).setAction(Intent.ACTION_MAIN).addCategory("com.oculus.intent.category.OVERLAY_LAUNCHER").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
     if(args!=null && "true".equals(args.getString("resizeProbe"))){await(compact,"!!document.querySelector('.sidebar')");resizeProbe(compact);return;}
     await(compact,"!!document.querySelector('.thread-row')");result.putString("compact",size(compact));capture(compact,"viewer-compact.png");
@@ -76,7 +85,7 @@ public class ViewerSmoke extends Instrumentation {
         if(host.readerView().getWidth()<=originalWeb.getWidth())throw new Exception("Reader is not wider than list");
         result.putString("reader",host.readerView().getWidth()+"x"+host.readerView().getHeight());
       }
-      if(!"true".equals(js(compact,"!document.querySelector('.composer input,.composer textarea,.composer button')")))throw new Exception("Composer exposes an input");
+      if(!"true".equals(js(compact,"!!document.querySelector('.draft-input') && (!!document.querySelector('.draft-input').value.trim() || document.querySelector('.draft-send').disabled)")))throw new Exception("Composer missing or empty draft allows sending");
       capture(compact,"viewer-expanded.png");
       js(compact,"document.querySelector('[aria-label=\"Back to threads\"]').click();true");
       await(compact,"!!document.querySelector('.list-only .thread-row')");
@@ -85,6 +94,6 @@ public class ViewerSmoke extends Instrumentation {
       if(!"true".equals(js(compact,"window.viewerNavigationSentinel==='same-document'")))throw new Exception("Parent document reloaded");
       result.putString("mode",spatial?"Layout SDK child":"Inline fallback");
     }
-    result.putString("returned",size(compact));result.putString("stream","PASS: two read-only open/back cycles, stable parent task/display/size/document, reader cleanup, visible scrollable history. Mode: "+result.getString("mode")+". Physical centering requires headset review.\n");finish(Activity.RESULT_OK,result);
+    result.putString("returned",size(compact));result.putString("stream","PASS: two open/back cycles, stable parent task/display/size/document, reader cleanup, visible scrollable history. Mode: "+result.getString("mode")+". Physical centering requires headset review.\n");finish(Activity.RESULT_OK,result);
   }catch(Exception e){result.putString("stream","FAIL: "+e+"\n");finish(Activity.RESULT_CANCELED,result);}}
 }
