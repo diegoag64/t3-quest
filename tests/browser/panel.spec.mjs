@@ -11,8 +11,8 @@ test('compact sidebar filters, preserves scroll and returns from reader',async({
   await page.locator('.thread-row').nth(3).click();await page.getByRole('button',{name:'Back to threads'}).click();
   expect(await page.locator('.sidebar-list').evaluate(n=>n.scrollTop)).toBe(scroll);
 });
-for(const size of [{width:1000,height:780},{width:420,height:480}]){
-  test(`reader ${size.width} keeps history visible and controls inside viewport`,async({page},info)=>{
+for(const size of [{width:1000,height:780},{width:420,height:480},{width:420,height:350}]){
+  test(`reader ${size.width}x${size.height} keeps history visible and controls inside viewport`,async({page},info)=>{
     await page.setViewportSize(size);await ready(page,'/?mode=reader');await noOverflow(page);
     const timeline=page.locator('.timeline-scroll');expect((await timeline.boundingBox()).height).toBeGreaterThan(120);
     await expect(page.getByRole('textbox',{name:'Message draft'})).toBeVisible();await expect(page.getByRole('button',{name:'Send message'})).toBeInViewport();

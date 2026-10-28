@@ -41,3 +41,12 @@ html,body{height:100%;overflow:hidden}#app{height:100%}
 .repository-section .pr-card{padding:10px 0}.issue-card{padding:8px 0;border-bottom:1px solid #202020}
 .issue-title{text-align:left;min-height:40px;font-size:13px;line-height:1.5;padding:0;color:#ddd}
 .section-label{padding:10px 10px 5px;color:#818181;font-size:11px}.sidebar-footer.offline{color:#d5b47b}
+/* Inline fallback leaves room for history beneath the native Quest controls. */
+@media(max-height:400px){
+  .footer{padding:2px 12px 8px}.footer .activity-line{display:none}
+  .composer{padding:10px 12px 8px;border-radius:12px}
+  .draft-input{height:36px;min-height:36px;max-height:72px;font-size:14px;resize:none}
+  .voice-hint{font-size:11px;line-height:1.3;margin:2px 0 6px}
+  .composer-controls{gap:6px}.composer-controls button{padding:6px 10px;min-height:36px}
+  .new-messages{bottom:150px}
+}
