@@ -29,3 +29,17 @@ test('voice drafts require explicit Send, preserve edits across snapshots and ig
  assert.ok(textarea.readOnly);assert.equal(w.document.querySelector('.draft-send').textContent,'Retry send');
  w.QuestView.selectThread('other');assert.equal(textarea.value,'');assert.equal(w.document.querySelector('.draft-send').disabled,true);
 });
+
+
+test('resolved input requests do not ask the reader to respond again',async t=>{
+  const dom=await setup();t.after(()=>dom.window.close());const w=dom.window;
+  w.QuestView.configure({mode:'thread',threadId:'t'});
+  w.QuestView.receive({kind:'snapshot',threadId:'t',payload:{...snapshot,items:[
+    {id:'pending',position:1,item:{id:'pending',type:'approval_request',status:'waiting',prompt:'Allow the preview?'}},
+    {id:'resolved',position:2,item:{id:'resolved',type:'user_input_request',status:'completed',questions:[{question:'Choose a theme'}]}},
+  ]}});
+  const requests=w.document.querySelectorAll('.question');
+  assert.match(requests[0].textContent,/Approval requested.*respond on your laptop/s);
+  assert.match(requests[1].textContent,/Input · completed.*Request history/s);
+  assert.doesNotMatch(requests[1].textContent,/respond on your laptop/);
+});

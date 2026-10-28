@@ -1,6 +1,94 @@
 import {test,expect} from '@playwright/test';
 const ready=async(page,url='/')=>{await page.goto(url);await page.waitForFunction(()=>window.previewReady);};
 const noOverflow=async page=>expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+test('switching to an uncached child clears the previous thread context',async({page},info)=>{
+  await ready(page,'/?mode=reader');
+  await page.getByRole('textbox',{name:'Message draft'}).fill('Draft for the parent');
+  await page.evaluate(()=>QuestView.selectThread('uncached-child'));
+  await expect(page.locator('.breadcrumb')).toHaveText('Loading conversation…');
+  await expect(page.locator('.top-state')).toHaveText('Connecting…');
+  await expect(page.locator('.composer-model')).toHaveText('');
+  await expect(page.locator('.pr-toggle')).toHaveText('PRs');
+  await expect(page.getByRole('textbox',{name:'Message draft'})).toHaveValue('');
+  await expect(page.getByRole('button',{name:'Send message'})).toBeDisabled();
+  await page.evaluate(()=>QuestView.receive({kind:'error',threadId:'uncached-child',payload:{message:'Laptop disconnected. Retrying…'}}));
+  await expect(page.getByText('No messages in this thread yet.')).toHaveCount(0);
+  await expect(page.getByText('Beginning of conversation')).toHaveCount(0);
+  await page.screenshot({path:info.outputPath('uncached-offline.png')});
+});
+test('failed commands remain visible outside folded completed work',async({page},info)=>{
+  await ready(page,'/?mode=reader');
+  await page.evaluate(()=>{
+    const data=structuredClone(QuestTest.state.detail);
+    Object.assign(data.items.find(r=>r.id==='command').item,{exitCode:1,outputIndicatesFailure:true,output:'One test failed.'});
+    QuestView.receive({kind:'snapshot',threadId:'reader',payload:data});
+  });
+  await expect(page.locator('.timeline>.tool>summary')).toHaveText('npm test');
+  await page.locator('.timeline>.tool>summary').click();
+  await expect(page.getByText('One test failed.')).toBeVisible();
+  await page.screenshot({path:info.outputPath('failed-command.png')});
+});
+test('stream updates preserve reading position, open work and draft selection',async({page})=>{
+  await ready(page,'/?mode=reader&scenario=long');
+  const input=page.getByRole('textbox',{name:'Message draft'});
+  await input.fill('Keep this draft intact');
+  await input.evaluate(n=>n.setSelectionRange(5,9));
+  await page.locator('.work>summary').click();
+  await input.focus();
+  await page.locator('.timeline-scroll').evaluate(n=>n.scrollTop=180);
+  const before=await page.locator('.timeline-scroll').evaluate(n=>n.scrollTop);
+  await page.evaluate(()=>{
+    const data=structuredClone(QuestTest.state.detail);data.items.at(-1).item.text+='\n\nNew progress from the agent.';
+    QuestView.receive({kind:'snapshot',threadId:'reader',payload:data});
+  });
+  expect(await page.locator('.timeline-scroll').evaluate(n=>n.scrollTop)).toBeCloseTo(before,0);
+  await expect(page.locator('.work')).toHaveAttribute('open','');
+  await expect(input).toBeFocused();await expect(input).toHaveValue('Keep this draft intact');
+  expect(await input.evaluate(n=>[n.selectionStart,n.selectionEnd])).toEqual([5,9]);
+  await page.getByRole('button',{name:'Latest ↓'}).click();
+  expect(await page.locator('.timeline-scroll').evaluate(n=>n.scrollHeight-n.clientHeight-n.scrollTop)).toBeLessThan(2);
+});
+test('history metadata updates and reconnect recover without a message change',async({page})=>{
+  await ready(page,'/?mode=reader');
+  await page.evaluate(()=>{
+    const data=structuredClone(QuestTest.state.detail);data.hasMoreHistory=false;data.historyCursor=null;
+    QuestView.receive({kind:'snapshot',threadId:'reader',payload:data});
+  });
+  await expect(page.getByRole('button',{name:'Load earlier messages'})).toHaveCount(0);
+  await page.evaluate(()=>{
+    QuestView.receive({kind:'error',threadId:'reader',payload:{message:'Disconnected'}});
+    QuestView.receive({kind:'snapshot',threadId:'reader',payload:structuredClone(QuestTest.state.detail)});
+  });
+  await expect(page.locator('.top-state')).toHaveText('Live');await expect(page.locator('.error-banner')).toBeHidden();
+});
+test('cached PR evidence ages without another network response',async({page},info)=>{
+  await page.clock.install();await ready(page,'/?mode=reader');
+  await page.getByRole('button',{name:'Show pull requests'}).click();
+  await expect(page.locator('.pr-panel .pr-next')).toHaveText('Get a review');
+  await page.clock.fastForward(6*60*1000);
+  await expect(page.locator('.pr-panel .pr-next')).toHaveText('Refresh status on GitHub');
+  await expect(page.getByText('Status may be outdated')).toBeVisible();
+  await page.screenshot({path:info.outputPath('stale-pr.png')});
+});
+test('resuming releases canceled history, output and repository requests',async({page})=>{
+  await ready(page,'/?mode=reader');
+  await page.evaluate(()=>{
+    const data=structuredClone(QuestTest.state.detail);
+    Object.assign(data.items.find(r=>r.id==='command').item,{output:undefined,outputOmitted:true});
+    QuestView.receive({kind:'snapshot',threadId:'reader',payload:data});
+  });
+  await page.locator('.work>summary').click();await page.locator('.tool>summary').first().click();
+  await page.getByRole('button',{name:'Load full output'}).click();
+  await expect(page.getByRole('button',{name:'Loading output…'})).toBeDisabled();
+  await page.evaluate(()=>{
+    QuestTest.state.loadingHistory=true;QuestTest.state.repositoryLoading=true;
+    QuestView.receive({kind:'resume',threadId:'reader',payload:{}});
+  });
+  await expect(page.getByRole('button',{name:'Load earlier messages'})).toBeEnabled();
+  await expect(page.getByRole('button',{name:'Load full output'})).toBeEnabled();
+  await page.getByRole('button',{name:'Show pull requests'}).click();
+  await expect(page.getByRole('button',{name:'Repository activity',exact:true})).toBeEnabled();
+});
 test('compact sidebar filters, preserves scroll and returns from reader',async({page},info)=>{
   await page.setViewportSize({width:420,height:480});await ready(page);
   await expect(page.getByRole('button',{name:/Polish the Quest/})).toBeVisible();await noOverflow(page);

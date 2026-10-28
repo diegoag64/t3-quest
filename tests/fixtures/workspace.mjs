@@ -7,7 +7,7 @@ export const threads = [
   {id:'waiting',title:'Wait for the preview deployment',project:'website',provider:'claude',status:'waiting'},
   ...Array.from({length:8},(_,n)=>({id:'task-'+n,title:'Check repository task '+(n+1),project:'t3-quest',branch:'main',provider:'codex',status:'completed'})),
 ];
-threads[0].pullRequests=[{host:'github.com',repository:'example/t3-quest',number:42,url:'https://github.com/example/t3-quest/pull/42',title:'Keep the reader centered',state:'open',isDraft:false,checks:'passing',review:'review-required',headBranch:'feat/reader',baseBranch:'main',stale:false,syncedAt:'2026-10-28T01:02:00Z',nextStep:'Get a review',stack:[]}];
+threads[0].pullRequests=[{host:'github.com',repository:'example/t3-quest',number:42,url:'https://github.com/example/t3-quest/pull/42',title:'Keep the reader centered',state:'open',isDraft:false,checks:'passing',review:'review-required',headBranch:'feat/reader',baseBranch:'main',stale:false,syncedAt:new Date().toISOString(),nextStep:'Get a review',stack:[]}];
 threads[1].pullRequests=[{...threads[0].pullRequests[0],number:43,url:'https://github.com/example/t3-quest/pull/43',title:'Retry interrupted requests',checks:'failing',review:'approved',nextStep:'Fix failing checks'}];
 export const settledThreads=[{...threads[0],pullRequests:[],id:'settled',title:'Set up the compact panel',settledAt:'2026-10-27T12:00:00Z'}];
 const row=(id,position,type,extra)=>({id,position,item:{id,type,runId:'run-1',status:'completed',...extra}});

@@ -45,3 +45,9 @@ Heartbeat `improve-t3-quest-overnight` resumes this chat every 30 minutes for up
 - Next: audit loading/error recovery and remaining source differences, especially streaming updates, history pagination, PR freshness, and draft focus. Inspect baseline screenshots and add focused regression cases for actual gaps. Finish with a version bump to 0.6.0 and an APK build, without claiming headset verification.
 - The running laptop bridge has not been restarted with these overnight changes yet, and the headset still has the previous 0.5.0 installation. Restart the verified project bridge at the end if useful; avoid requiring USB or waking the headset.
 - An idle-sleep prevention process is running for six hours (exec session 12091). Heartbeat remains active for the next quality passes.
+
+## Final reliability pass
+
+Browser regressions reproduced three defects before the fixes: uncached child navigation retained the previous title, completed commands with a nonzero exit code were folded away, and history-only metadata updates were ignored. The fixes clear the prior thread context, keep failed commands visible, and include pagination metadata in snapshot comparison. Screenshot inspection also caught a retained PR count and a false beginning-of-history label while an uncached thread was offline; both are cleared.
+
+The reader now releases canceled history, output, and repository loading states on resume. Completed input requests are labeled as history. PR evidence ages after five minutes even without another bridge response. Six additional browser cases cover these states plus streaming scroll anchoring, expanded work, draft focus, and text selection. All 43 Node/DOM and 16 Chromium tests pass. Screenshots of failed command output, stale PRs, uncached offline navigation, compact rows, and the short reader were inspected. Android debug and instrumentation APK builds and lint pass; lint has zero errors and 17 warnings.

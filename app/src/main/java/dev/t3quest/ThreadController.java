@@ -94,7 +94,12 @@ public final class ThreadController {
         new AlertDialog.Builder(activity).setTitle("Open link in browser?").setMessage(url).setNegativeButton("Cancel",null)
             .setPositiveButton("Open",(dialog,which)->{try{activity.startActivity(new Intent(Intent.ACTION_VIEW,uri));}catch(Exception ignored){}}).show();
     }
-    public void resume(){resumed=true;composer.resume();refresh();}
+    public void resume(){
+        resumed=true;
+        // pause() invalidates outstanding responses. Release their UI loading states too.
+        if(threadId!=null)web.send("resume",threadId,new JSONObject());
+        composer.resume();refresh();
+    }
     public void pause(){resumed=false;composer.pause();generation++;loading=false;handler.removeCallbacks(poll);}
     public void dispose(){pause();composer.dispose();handler.removeCallbacksAndMessages(null);network.shutdownNow();}
 }
