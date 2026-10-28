@@ -48,7 +48,7 @@ The **Connect** tab repeats these steps and provides a manual connection option.
 
 Tap a thread in **Threads** to request a larger reading window centered just in front of the compact list. The back arrow closes the reader and reveals the list, preserving its search and scroll position. Use the sidebar button in the conversation header to switch threads within the same reader.
 
-Tap a subagent task card to open its conversation in the same reader. Expand **Worked for…** if the task is folded inside completed work. The back arrow or controller Back returns to the parent, restoring its loaded history, expanded details, and scroll position. Nested tasks work the same way. Drafts remain separate for each thread. At the top-level thread, Back returns to the list. A task without a linked child thread expands its details instead.
+Tap a subagent task card to open its conversation in the same reader. Subagent cards stay visible outside **Worked for…**, including running and completed tasks. The back arrow or controller Back returns to the parent, restoring its loaded history, expanded details, and scroll position. Nested tasks work the same way. Drafts remain separate for each thread. At the top-level thread, Back returns to the list. A task without a linked child thread expands its details instead.
 
 The prototype uses Meta's Layout SDK to anchor a 1000 × 780 dp child window to the center of the compact panel. It keeps the original activity and list window. If spatial windows are unavailable, the conversation opens inside the compact panel instead. Horizon OS controls final placement. Centered opening and return to the compact panel were verified on Quest 3 alongside Beat Saber.
 

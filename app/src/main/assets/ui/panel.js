@@ -162,7 +162,7 @@
       // Match T3's turn fold: earlier command failures belong to the work behind
       // the final reply. Failures arriving after that reply still stay visible.
       const terminalIndex=rows.indexOf(last);
-      const folded=rows.filter((r,index)=>r.id!==last.id&&!['user_message','notification','error','user_input_request','approval_request','secret_request','proposed_plan'].includes(r.item.type)&&(index<terminalIndex||!failedItem(r.item))&&!['running','inProgress'].includes(r.item.status)&&(r.item.type!=='checkpoint'||r.item.files?.length));
+      const folded=rows.filter((r,index)=>r.id!==last.id&&!['user_message','subagent','notification','error','user_input_request','approval_request','secret_request','proposed_plan'].includes(r.item.type)&&(index<terminalIndex||!failedItem(r.item))&&!['running','inProgress'].includes(r.item.status)&&(r.item.type!=='checkpoint'||r.item.files?.length));
       if(folded.length){folds.set(folded[0].id,{rows:folded,run});folded.forEach(r=>hidden.add(r.id));}
     }
     let pending=[];const flush=()=>{if(pending.length){nodes.push(workGroup(pending,runs.get(pending[0].item.runId)));pending=[];}};
@@ -171,7 +171,7 @@
       else if(i.type==='subagent'){flush();nodes.push(subagent(r));}
       else if(i.type==='checkpoint'){if(i.files?.length)pending.push(r);}
       else if(['user_input_request','approval_request','secret_request'].includes(i.type)){flush();const q=el('div','entry question');q.dataset.entryId=r.id;const kind=i.type==='approval_request'?'Approval':i.type==='secret_request'?'Secret':'Input';const resolved=['completed','cancelled','interrupted','failed'].includes(i.status);q.append(el('strong','',resolved?kind+' · '+i.status:kind+' requested'),markdown(i.prompt||i.questions?.map(q=>q.question||q.header).join('\n\n')||i.title||''),el('small','',resolved?'Request history · read only':'Read only · respond on your laptop'));nodes.push(q);}
-      else if(i.type==='notification'||i.type==='error'||failedItem(i)){flush();const child=i.source?.childThreadId;const task=child&&state.items.find(r=>r.item.type==='subagent'&&r.item.childThreadId===child);if(task)nodes.push(subagent({...r,item:{...task.item,completedAt:i.completedAt||task.item.completedAt}}));else{const n=tool(i);n.classList.add('entry');n.dataset.entryId=r.id;nodes.push(n);}}
+      else if(i.type==='notification'||i.type==='error'||failedItem(i)){flush();const child=i.source?.childThreadId;const task=child&&state.items.find(r=>r.item.type==='subagent'&&r.item.childThreadId===child);if(task&&i.type==='notification')continue;const n=tool(i);n.classList.add('entry');n.dataset.entryId=r.id;nodes.push(n);}
       else pending.push(r);
     }flush();return nodes;
   }

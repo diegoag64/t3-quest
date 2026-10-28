@@ -31,7 +31,8 @@ public class ViewerSmoke extends Instrumentation {
   private void subagentProbe(Activity activity)throws Exception{
     WebView original=readingWeb(activity);
     await(activity,"!!document.querySelector('[data-child-thread-id]')");
-    js(activity,"(()=>{const card=document.querySelector('[data-child-thread-id]');for(let node=card.parentElement;node;node=node.parentElement)if(node.tagName==='DETAILS')node.open=true;card.scrollIntoView({block:'center'});window.viewerParent={id:QuestTest.state.selected,scroll:document.querySelector('.timeline-scroll').scrollTop,draft:document.querySelector('.draft-input').value};window.viewerChildId=card.dataset.childThreadId;card.click();return true;})()");
+    await(activity,"[...document.querySelectorAll('[data-child-thread-id]')].every(card=>!card.closest('details'))");
+    js(activity,"(()=>{const card=document.querySelector('[data-child-thread-id]');card.scrollIntoView({block:'center'});window.viewerParent={id:QuestTest.state.selected,scroll:document.querySelector('.timeline-scroll').scrollTop,draft:document.querySelector('.draft-input').value};window.viewerChildId=card.dataset.childThreadId;card.click();return true;})()");
     await(activity,"QuestTest.state.selected===window.viewerChildId && QuestTest.state.detail?.thread?.id===window.viewerChildId && !!document.querySelector('.top-state.live') && QuestTest.state.items.length>0");
     if(readingWeb(activity)!=original)throw new Exception("Subagent navigation replaced the reader WebView");
     await(activity,"!!document.querySelector('[aria-label=\"Back to parent thread\"]')");

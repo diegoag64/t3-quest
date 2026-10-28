@@ -159,3 +159,9 @@ The full 48-test Node suite, 21 browser tests, and eight Android unit tests pass
 The update is installed on Quest. The opt-in device probe with `-e requireSubagent true -e threadId <parent-id>` clicked a real subagent card, loaded its history, and invoked Android Back. It verified the same reader WebView remained mounted and the parent ID, draft, and scroll position returned. The surrounding smoke test passed two open/back cycles with unchanged compact parent geometry and visible history. The private device capture was inspected locally and stays ignored. The test sent no messages and made no recordings.
 
 The final live child check also exposed a missing project label for subagents absent from the sidebar. Desktop mode now resolves their project from the child projection within the same environment. The private Android software capture clipped its output, so the viewport was checked independently through the debug WebView: 1000 by 780 CSS pixels, the header at the top, and the footer at the bottom.
+
+## Persistent subagent task cards
+
+Subagent cards stay outside completed-work folds in every status. Matching child notifications no longer create duplicate cards. Earlier command failures remain folded, and task cards still open the child conversation with parent return navigation.
+
+All 22 browser tests pass, including running, completed, and failed status updates with work collapsed, notification deduplication, and child navigation. The synthetic card screenshot was inspected. Both Android APKs build and are installed on Quest. The device probe now rejects any linked subagent card inside a fold; it passed a real child history read and Android Back return with the same reader, parent draft, and scroll position. The compact parent remained unchanged across both open/back cycles. No messages or recordings were sent.

@@ -1,6 +1,31 @@
 import {test,expect} from '@playwright/test';
 const ready=async(page,url='/')=>{await page.goto(url);await page.waitForFunction(()=>window.previewReady);};
 const noOverflow=async page=>expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+test('subagent cards stay visible as they finish while command logs remain folded',async({page},info)=>{
+  await ready(page,'/?mode=reader&scenario=subagents');
+  for(const status of ['running','completed','failed']){
+    await page.evaluate(status=>{
+      const data=structuredClone(QuestTest.state.detail);
+      const child=data.items.find(r=>r.id==='child');child.item.status=status;
+      Object.assign(data.items.find(r=>r.id==='command').item,{status:'failed',exitCode:1});
+      if(!data.items.some(r=>r.id==='child-notice'))data.items.push({id:'child-notice',position:7,item:{id:'child-notice',type:'notification',runId:'run-1',source:{childThreadId:child.item.childThreadId},summary:'Task update'}});
+      QuestView.receive({kind:'snapshot',threadId:'reader',payload:data});
+    },status);
+    const card=page.locator('.timeline>.subagent');
+    await expect(card).toHaveCount(1);await expect(card).toBeVisible();
+    await expect(card).toContainText(status==='completed'?'Finished':status);
+    await expect(page.locator('.work .subagent')).toHaveCount(0);
+    await expect(page.locator('.work')).not.toHaveAttribute('open','');
+    await expect(page.locator('.tool-label').filter({hasText:'npm test'})).toBeHidden();
+  }
+  await page.locator('.timeline>.subagent').scrollIntoViewIfNeeded();
+  await page.screenshot({path:info.outputPath('visible-subagent-cards.png')});
+  await page.locator('.timeline>.subagent').click();
+  await expect(page.locator('.breadcrumb')).toContainText('Review conversation layout');
+  await page.getByRole('button',{name:'Back to parent thread'}).click();
+  await expect(page.locator('.timeline>.subagent')).toBeVisible();
+  await expect(page.locator('.work')).not.toHaveAttribute('open','');
+});
 test('subagent threads support nested navigation and restore parent history and drafts',async({page},info)=>{
   await ready(page,'/?mode=reader&scenario=subagents');
   const draft=page.getByRole('textbox',{name:'Message draft'});
