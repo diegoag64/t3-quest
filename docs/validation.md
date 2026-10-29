@@ -165,3 +165,24 @@ The final live child check also exposed a missing project label for subagents ab
 Subagent cards stay outside completed-work folds in every status. Matching child notifications no longer create duplicate cards. Earlier command failures remain folded, and task cards still open the child conversation with parent return navigation.
 
 All 22 browser tests pass, including running, completed, and failed status updates with work collapsed, notification deduplication, and child navigation. The synthetic card screenshot was inspected. Both Android APKs build and are installed on Quest. The device probe now rejects any linked subagent card inside a fold; it passed a real child history read and Android Back return with the same reader, parent draft, and scroll position. The compact parent remained unchanged across both open/back cycles. No messages or recordings were sent.
+
+## PR viewport and image inspection
+
+The Quest reproduced a 300 CSS-pixel mismatch between the PR browser's layout viewport and visual viewport. The Layout SDK reader is 780 pixels tall, but Chromium used the compact Activity's 480-pixel window bounds. This matches Android's documented [WebView-window intersection behavior](https://developer.android.com/develop/ui/views/layout/webapps/understand-window-insets). A weighted container alone and consumed insets did not resolve the mismatch.
+
+`SpatialWebViewContext` now supplies the attached child root's current bounds to the PR WebView. It preserves window insets and delegates window operations. The inline fallback keeps its original context. On Quest, the visual viewport increased from 353.6 to 653.6 CSS pixels, matching the 654-pixel layout viewport within rounding. Tests assert that match at three scroll positions, including the bottom of the PR. Native touch events also reached a temporary probe near the bottom edge at each position.
+
+PR images open in an isolated overlay with zoom, fit, original-size, and drag-to-pan controls. Close and Android Back preserve the PR scroll position. The injected script has no native T3 interface. The device test uses native touch events because script-generated clicks do not create the user activation required by Android WebView's Back history behavior. It requeries thumbnails after Back because GitHub can replace its DOM.
+
+All 25 browser tests and 11 Android unit tests pass. Android lint, the app build, and the instrumentation build pass. The installed APK passed the live public-PR test with image enlargement, Close, Android Back, retained reader and draft, and two reader open/back cycles with stable compact parent bounds. Synthetic image screenshots and a device image overlay capture were inspected. Some software-drawn device captures retained an older WebView frame, so screenshot appearance alone was not used as proof of scrolling or touch behavior. Device captures and logs remain ignored.
+
+Reproduce the device check with an awake, connected headset and a PR containing a loaded image:
+
+```sh
+.tools/android-sdk/platform-tools/adb shell am instrument -w \
+  -e prUrl https://github.com/diegoag64/t3-quest/pull/1 \
+  -e prScrollProbe true -e requirePrImages true \
+  dev.t3quest.test/dev.t3quest.ViewerSmoke
+```
+
+Private GitHub sign-in, keyboard overlap, and controller focus during an active Beat Saber song remain manual checks. No thread messages, GitHub writes, recordings, or transcription requests were made.

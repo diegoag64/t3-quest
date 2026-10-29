@@ -30,7 +30,7 @@ public class PrBrowserViewTest {
     @Before public void setUp(){
         controller=Robolectric.buildActivity(Activity.class).setup();activity=controller.get();returns=new AtomicInteger();
         pane=new PrBrowserView(activity,activity,PR,"← Thread",returns::incrementAndGet);
-        activity.setContentView(pane);web=(WebView)pane.getChildAt(pane.getChildCount()-1);
+        activity.setContentView(pane);web=(WebView)((ViewGroup)pane.getChildAt(pane.getChildCount()-1)).getChildAt(0);
     }
     @After public void tearDown(){pane.dispose();controller.pause().stop().destroy();}
     private Button button(View node,String title){
@@ -72,5 +72,19 @@ public class PrBrowserViewTest {
     @Test public void fallbackOpensOnlyAfterTheUserChoosesIt(){
         assertNull(shadowOf(activity).getNextStartedActivity());button(pane,"Quest Browser ↗").performClick();
         assertEquals(PR,shadowOf(activity).getNextStartedActivity().getDataString());
+    }
+    @Test public void browserFillsItsViewportAcrossPanelSizesAndScrollPositions(){
+        assertEquals(ViewGroup.LayoutParams.MATCH_PARENT,web.getLayoutParams().height);
+        for(int height:new int[]{780,480,350}){
+            pane.measure(View.MeasureSpec.makeMeasureSpec(1000,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(height,View.MeasureSpec.EXACTLY));
+            pane.layout(0,0,1000,height);
+            ViewGroup viewport=(ViewGroup)web.getParent();
+            // Robolectric does not measure Chromium's renderer. Check the native
+            // viewport here; instrumentation checks the real WebView and DOM.
+            assertEquals(height,viewport.getBottom());
+            int viewportHeight=viewport.getHeight();assertTrue(viewportHeight>height/2);
+            web.scrollTo(0,12000);
+            assertEquals(viewportHeight,viewport.getHeight());
+        }
     }
 }

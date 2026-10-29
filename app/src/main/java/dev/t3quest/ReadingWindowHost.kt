@@ -115,7 +115,7 @@ class ReadingWindowHost(
                         controller?.pause()
                         reader?.visibility = View.GONE
                         browser = PrBrowserView(pane.context, activity, url,
-                            if (selected == null) "← Threads" else "← Thread", ::closePr).also {
+                            if (selected == null) "← Threads" else "← Thread", ::closePr, true).also {
                             pane.addView(it, FrameLayout.LayoutParams(-1, -1))
                             if (!resumed) it.pause()
                         }

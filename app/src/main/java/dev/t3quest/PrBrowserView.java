@@ -12,6 +12,7 @@ import android.webkit.*;
 import android.widget.*;
 import java.io.ByteArrayInputStream;
 import java.util.HashMap;
+import java.nio.charset.StandardCharsets;
 
 /** Public website surface. Deliberately has no T3Quest JavaScript interface or bridge credentials. */
 public final class PrBrowserView extends LinearLayout {
@@ -20,16 +21,28 @@ public final class PrBrowserView extends LinearLayout {
     private final TextView address, status;
     private final ProgressBar progress;
     private final Button previous;
+    private final String imageViewerScript;
     private String prRoot;
     private boolean failed, disposed;
 
-    @SuppressLint("SetJavaScriptEnabled")
     public PrBrowserView(Context context, Activity activity, String url, String returnLabel, Runnable close) {
+        this(context, activity, url, returnLabel, close, false);
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    public PrBrowserView(Context context, Activity activity, String url, String returnLabel, Runnable close, boolean spatial) {
         super(context); this.activity = activity;
         prRoot = GitHubPrUrl.root(url);
         if (prRoot == null) throw new IllegalArgumentException("Expected a GitHub pull request");
+        try(java.io.InputStream script=context.getAssets().open("ui/pr-browser.js")){
+            java.io.ByteArrayOutputStream bytes=new java.io.ByteArrayOutputStream();
+            byte[] buffer=new byte[4096];int count;
+            while((count=script.read(buffer))!=-1)bytes.write(buffer,0,count);
+            imageViewerScript=new String(bytes.toByteArray(),StandardCharsets.UTF_8);
+        }catch(java.io.IOException error){throw new IllegalStateException("PR image viewer asset missing",error);}
         setOrientation(VERTICAL); setBackgroundColor(Color.rgb(12,12,12));
-        web = new WebView(context);web.setBackgroundColor(Color.BLACK);
+        web = new WebView(spatial && android.os.Build.VERSION.SDK_INT >= 30
+                ? new SpatialWebViewContext(context, this) : context);web.setBackgroundColor(Color.BLACK);
         LinearLayout header = line(context);
         header.addView(button(context,returnLabel,close));
         address = label(context,prRoot.substring("https://github.com/".length()),15);
@@ -49,7 +62,11 @@ public final class PrBrowserView extends LinearLayout {
         status.setTextColor(Color.rgb(160,160,160));addView(status);
         progress = new ProgressBar(context,null,android.R.attr.progressBarStyleHorizontal);
         addView(progress,new LinearLayout.LayoutParams(-1,dp(2)));
-        addView(web,new LinearLayout.LayoutParams(-1,0,1));
+        // Give Chromium a fixed MATCH_PARENT viewport. Weight belongs to the frame,
+        // not the WebView, so its content height cannot participate in native sizing.
+        FrameLayout viewport=new FrameLayout(context);
+        viewport.addView(web,new FrameLayout.LayoutParams(-1,-1));
+        addView(viewport,new LinearLayout.LayoutParams(-1,0,1));
         WebSettings settings=web.getSettings();
         settings.setJavaScriptEnabled(true);settings.setDomStorageEnabled(true);
         settings.setAllowFileAccess(false);settings.setAllowContentAccess(false);
@@ -78,6 +95,7 @@ public final class PrBrowserView extends LinearLayout {
                 failed=false;status.setText("Loading GitHub…");address.setText(target.replace("https://",""));previous.setEnabled(view.canGoBack());
             }
             @Override public void onPageFinished(WebView view,String target){
+                if(GitHubPrUrl.isGitHub(target))view.evaluateJavascript(imageViewerScript,null);
                 if(!failed)status.setText("GitHub website · Private PRs need sign-in. Login trouble? Use Quest Browser.");
                 previous.setEnabled(view.canGoBack());CookieManager.getInstance().flush();
             }
@@ -94,7 +112,7 @@ public final class PrBrowserView extends LinearLayout {
     public boolean goBack(){if(!disposed&&web.canGoBack()){web.goBack();return true;}return false;}
     public void resume(){if(!disposed)web.onResume();}
     public void pause(){if(!disposed)web.onPause();}
-    public void dispose(){if(disposed)return;disposed=true;web.stopLoading();removeView(web);web.destroy();}
+    public void dispose(){if(disposed)return;disposed=true;web.stopLoading();((android.view.ViewGroup)web.getParent()).removeView(web);web.destroy();}
     private void external(String target,boolean confirm){
         Uri uri=Uri.parse(target);if(!"https".equals(uri.getScheme())||uri.getHost()==null)return;
         Runnable open=()->{try{activity.startActivity(new Intent(Intent.ACTION_VIEW,uri));}catch(Exception error){Toast.makeText(getContext(),"No browser available",Toast.LENGTH_SHORT).show();}};

@@ -27,12 +27,24 @@ public class ViewerSmoke extends Instrumentation {
   private WebView prWeb(View node){if(node instanceof PrBrowserView)return web(node);if(node instanceof ViewGroup){ViewGroup group=(ViewGroup)node;for(int i=0;i<group.getChildCount();i++){WebView found=prWeb(group.getChildAt(i));if(found!=null)return found;}}return null;}
   private android.widget.Button button(View node,String label){if(node instanceof android.widget.Button&&label.contentEquals(((android.widget.Button)node).getText()))return (android.widget.Button)node;if(node instanceof ViewGroup){ViewGroup group=(ViewGroup)node;for(int i=0;i<group.getChildCount();i++){android.widget.Button found=button(group.getChildAt(i),label);if(found!=null)return found;}}return null;}
   private String browserJs(WebView web,String code)throws Exception{CountDownLatch done=new CountDownLatch(1);AtomicReference<String> result=new AtomicReference<>();runOnMainSync(()->web.evaluateJavascript(code,value->{result.set(value);done.countDown();}));if(!done.await(5,TimeUnit.SECONDS))throw new Exception("PR browser timed out");return result.get();}
-  private void awaitBrowser(WebView web,String condition)throws Exception{for(int i=0;i<60;i++){if("true".equals(browserJs(web,condition)))return;Thread.sleep(500);}throw new Exception("GitHub page did not become ready");}
+  private void awaitBrowser(WebView web,String condition)throws Exception{for(int i=0;i<60;i++){if("true".equals(browserJs(web,condition)))return;Thread.sleep(500);}throw new Exception("GitHub condition timed out: "+condition);}
+  private void tapBrowser(WebView browser,String element)throws Exception{
+    String raw=browserJs(browser,"(()=>{const r=("+element+").getBoundingClientRect();return JSON.stringify([Math.max(1,Math.min(innerWidth-1,r.left+r.width/2)),Math.max(1,Math.min(innerHeight-1,r.top+r.height/2)),innerWidth])})()");
+    org.json.JSONArray point=new org.json.JSONArray((String)new org.json.JSONTokener(raw).nextValue());
+    runOnMainSync(()->{
+      float scale=browser.getWidth()/(float)point.optDouble(2),x=(float)point.optDouble(0)*scale,y=(float)point.optDouble(1)*scale;
+      long time=SystemClock.uptimeMillis();browser.requestFocus();
+      MotionEvent down=MotionEvent.obtain(time,time,MotionEvent.ACTION_DOWN,x,y,0);
+      MotionEvent up=MotionEvent.obtain(time,time+60,MotionEvent.ACTION_UP,x,y,0);
+      down.setSource(android.view.InputDevice.SOURCE_TOUCHSCREEN);up.setSource(android.view.InputDevice.SOURCE_TOUCHSCREEN);
+      browser.dispatchTouchEvent(down);browser.dispatchTouchEvent(up);down.recycle();up.recycle();
+    });
+  }
   private void subagentProbe(Activity activity)throws Exception{
     WebView original=readingWeb(activity);
     await(activity,"!!document.querySelector('[data-child-thread-id]')");
     await(activity,"[...document.querySelectorAll('[data-child-thread-id]')].every(card=>!card.closest('details'))");
-    js(activity,"(()=>{const card=document.querySelector('[data-child-thread-id]');card.scrollIntoView({block:'center'});window.viewerParent={id:QuestTest.state.selected,scroll:document.querySelector('.timeline-scroll').scrollTop,draft:document.querySelector('.draft-input').value};window.viewerChildId=card.dataset.childThreadId;card.click();return true;})()");
+    js(activity,"(()=>{const card=document.querySelector('[data-child-thread-id]');card.scrollIntoView({block:'center',behavior:'instant'});window.viewerParent={id:QuestTest.state.selected,scroll:document.querySelector('.timeline-scroll').scrollTop,draft:document.querySelector('.draft-input').value};window.viewerChildId=card.dataset.childThreadId;card.click();return true;})()");
     await(activity,"QuestTest.state.selected===window.viewerChildId && QuestTest.state.detail?.thread?.id===window.viewerChildId && !!document.querySelector('.top-state.live') && QuestTest.state.items.length>0");
     if(readingWeb(activity)!=original)throw new Exception("Subagent navigation replaced the reader WebView");
     await(activity,"!!document.querySelector('[aria-label=\"Back to parent thread\"]')");
@@ -58,6 +70,54 @@ public class ViewerSmoke extends Instrumentation {
       awaitBrowser(browser,loaded+" && location.href.split('?')[0].split('#')[0]==="+org.json.JSONObject.quote(path));
     }
     capture(activity,"viewer-pr-browser.png");
+    if(args!=null&&"true".equals(args.getString("prScrollProbe"))){
+      AtomicReference<String> nativeBounds=new AtomicReference<>();runOnMainSync(()->{android.graphics.Rect visible=new android.graphics.Rect(),global=new android.graphics.Rect();browser.getWindowVisibleDisplayFrame(visible);browser.getGlobalVisibleRect(global);nativeBounds.set("web="+browser.getWidth()+"x"+browser.getHeight()+", root="+browser.getRootView().getWidth()+"x"+browser.getRootView().getHeight()+", frame="+visible+", global="+global);});
+      Bundle nativeReport=new Bundle();nativeReport.putString("stream","PR native bounds: "+nativeBounds.get()+"\n");sendStatus(0,nativeReport);
+      int step=0;
+      for(double fraction:new double[]{.3,.65,1}){
+        browserJs(browser,"scrollTo({behavior:'instant',top:(document.documentElement.scrollHeight-innerHeight)*"+fraction+"});true");
+        Thread.sleep(350);
+        awaitBrowser(browser,"Math.abs(visualViewport.height*visualViewport.scale-innerHeight)<1");
+        awaitBrowser(browser,"(()=>{const top=(document.documentElement.scrollHeight-innerHeight)*"+fraction+";if(Math.abs(scrollY-top)<3)return true;scrollTo({top,behavior:'instant'});return false})()");
+        String geometry=browserJs(browser,"JSON.stringify({height:innerHeight,visualHeight:visualViewport.height,scale:visualViewport.scale,scroll:scrollY,documentHeight:document.documentElement.scrollHeight})");
+        Bundle diagnostic=new Bundle();diagnostic.putString("stream","PR viewport "+fraction+": "+geometry+"\n");sendStatus(0,diagnostic);
+        // A native tap near the bottom must reach web content, not just paint there.
+        browserJs(browser,"window.prBottomTapped=false;window.prBottomProbe=document.createElement('button');prBottomProbe.textContent='Viewport test';prBottomProbe.style.cssText='position:fixed;bottom:8px;left:8px;width:120px;height:40px;z-index:2147483647';prBottomProbe.onclick=e=>{e.preventDefault();e.stopPropagation();window.prBottomTapped=true};document.documentElement.append(prBottomProbe);true");
+        tapBrowser(browser,"window.prBottomProbe");
+        awaitBrowser(browser,"window.prBottomTapped");
+        browserJs(browser,"prBottomProbe.remove();true");
+        Thread.sleep(300);
+        capture(activity,"viewer-pr-scroll-"+(step++)+".png");
+      }
+    }
+    if(args!=null&&"true".equals(args.getString("requirePrImages"))){
+      Bundle images=new Bundle();images.putString("stream","PR images: "+browserJs(browser,"JSON.stringify({installed:!!window.__t3QuestPrImages,images:[...document.querySelectorAll('.markdown-body img')].map(n=>({width:n.naturalWidth,complete:n.complete,classes:n.className})).slice(0,8)})")+"\n");sendStatus(0,images);
+      browserJs(browser,"window.prImageThumb=[...document.querySelectorAll('.markdown-body img')].find(n=>n.naturalWidth>=64&&!n.classList.contains('emoji'));window.prImageThumb?.scrollIntoView({block:'center',behavior:'instant'});true");
+      awaitBrowser(browser,"!!window.prImageThumb");
+      browserJs(browser,"window.prImageScroll=scrollY;window.prImageError='';window.addEventListener('error',event=>window.prImageError=event.message,{once:true});true");
+      tapBrowser(browser,"window.prImageThumb");
+      Thread.sleep(300);
+      String overlay="[...document.documentElement.children].find(n=>n.shadowRoot?.querySelector('[aria-label=\"PR image viewer\"]'))?.shadowRoot";
+      Bundle imageClick=new Bundle();imageClick.putString("stream","PR image click: "+browserJs(browser,"JSON.stringify({error:window.prImageError,overlay:!!("+overlay+"),href:location.pathname})")+"\n");sendStatus(0,imageClick);
+      awaitBrowser(browser,"!!("+overlay+")?.querySelector('img')?.naturalWidth");
+      browserJs(browser,"window.prImageFitWidth=("+overlay+").querySelector('img').clientWidth;true");
+      tapBrowser(browser,"("+overlay+").querySelector('[aria-label=\"Zoom in\"]')");
+      awaitBrowser(browser,"("+overlay+").querySelector('img').clientWidth>window.prImageFitWidth");
+      Thread.sleep(700);
+      capture(activity,"viewer-pr-image.png");
+      runOnMainSync(activity::onBackPressed);
+      Thread.sleep(500);
+      Bundle imageBack=new Bundle();imageBack.putString("stream","PR image back: "+browserJs(browser,"JSON.stringify({overlay:!!("+overlay+"),scroll:scrollY,expected:window.prImageScroll,href:location.pathname})")+"\n");sendStatus(0,imageBack);
+      awaitBrowser(browser,"!("+overlay+")&&Math.abs(scrollY-window.prImageScroll)<3");
+      // GitHub may replace its content after history navigation. Requery the thumbnail.
+      browserJs(browser,"window.prImageThumb=[...document.querySelectorAll('.markdown-body img')].find(n=>n.naturalWidth>=64&&!n.classList.contains('emoji'));window.prImageThumb?.scrollIntoView({block:'center',behavior:'instant'});true");
+      awaitBrowser(browser,"!!window.prImageThumb?.isConnected");
+      browserJs(browser,"window.prImageScroll=scrollY;true");
+      tapBrowser(browser,"window.prImageThumb");
+      awaitBrowser(browser,"!!("+overlay+")?.querySelector('img')?.naturalWidth");
+      tapBrowser(browser,"("+overlay+").querySelector('[aria-label=\"Close image\"]')");
+      awaitBrowser(browser,"!("+overlay+")&&Math.abs(scrollY-window.prImageScroll)<3");
+    }
     runOnMainSync(()->button(pane,"← Thread").performClick());
     await(activity,"document.querySelector('.draft-input').value===window.prSmokeDraft && document.querySelector('.timeline-scroll').scrollTop<2");
     AtomicReference<Boolean> retained=new AtomicReference<>();runOnMainSync(()->retained.set(readingWeb(activity)==original&&original.getVisibility()==View.VISIBLE&&prWeb(pane)==null));

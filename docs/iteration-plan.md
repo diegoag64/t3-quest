@@ -74,3 +74,9 @@ The user requested a separate sign-in experiment before replacing the integrated
 Live Google sign-in, OAuth refresh, and discovery succeeded. Both existing environments were returned without new machine pairings. Thread verification stopped at relay token exchange with HTTP 401 and `invalid_bearer`. Current upstream source accepts CLI OAuth tokens for discovery but requires a session-template JWT for DPoP connection-token issuance. This boundary is now a synthetic regression case. All 57 Node tests pass, including eight prototype cases. The existing bridge still returned HTTP 200 with both desktop environments connected.
 
 The experiment does not establish that stock Nightly can replace the current setup yet. Continue with a separate supported Clerk interactive session or upstream CLI-token exchange support, then verify live histories and refresh/restart behavior before connecting the Quest UI. See [the prototype guide](connect-prototype.md) for commands and protocol references. No physical-headset test is required for these isolated CLI changes.
+
+## PR viewport and image inspection follow-up
+
+Fixed the reported loss of the lower PR viewport by giving Chromium the Layout SDK child bounds instead of the compact Activity bounds. Added image inspection with zoom, fit, original-size, panning, and return to the same PR position. The compact parent and centered reader behavior remain unchanged.
+
+The installed Quest build passed full-height viewport assertions and native bottom-edge taps at three scroll positions, image enlargement, Close, Android Back, retained thread state, and two reader open/back cycles. All 25 browser tests and 11 Android tests pass, as do lint and both APK builds. Synthetic tests cover image interactions without GitHub access. See [validation.md](validation.md#pr-viewport-and-image-inspection) for the diagnosis, reproducible device command, screenshot limitations, and remaining private-login and in-song checks.
