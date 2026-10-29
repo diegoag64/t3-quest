@@ -42,7 +42,7 @@ public final class ThreadWebView extends WebView {
         CookieManager.getInstance().setAcceptThirdPartyCookies(this, false);
         addJavascriptInterface(new Object() {
             @JavascriptInterface public void request(String action, String json) {
-                if (json == null || json.length() > 16000) return;
+                if (json == null || json.length() > 80000) return;
                 try {
                     JSONObject payload = new JSONObject(json);
                     activity.runOnUiThread(() -> { if (!activity.isDestroyed()) actions.onAction(action, payload); });
@@ -82,6 +82,9 @@ public final class ThreadWebView extends WebView {
     public void showList() {
         mode="list";threadId=null;pending.clear();
         if(ready)evaluateJavascript("QuestView.configure({mode:'list'})",null);
+    }
+    public void navigateBack() {
+        if(ready)evaluateJavascript("QuestView.back()",null);
     }
     public void send(JSONObject event) {
         if (!ready) { if (event.optString("kind").equals("list")) pendingList = event; else pending.put(event.optString("kind"), event); return; }

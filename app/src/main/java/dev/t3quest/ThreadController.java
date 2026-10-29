@@ -6,34 +6,41 @@ import android.net.Uri;
 import android.os.*;
 import org.json.*;
 import java.util.concurrent.*;
+import java.util.function.Consumer;
 
 /** Read-only conversation lifecycle inside the existing activity and WebView. */
 public final class ThreadController {
     private final Activity activity;
     private final ThreadWebView web;
+    private final ThreadComposer composer;
+    private final Consumer<String> openPr;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final ExecutorService network = Executors.newSingleThreadExecutor();
     private String threadId;
     private boolean resumed, loading;
     private int generation;
 
-    public ThreadController(Activity activity, ThreadWebView web) {
-        this.activity=activity; this.web=web;
+    public ThreadController(Activity activity, ThreadWebView web, Consumer<String> openPr) {
+        this.activity=activity; this.web=web; this.composer=new ThreadComposer(activity,web);this.openPr=openPr;
     }
     public boolean isOpen() { return threadId!=null; }
     public String selectedThread() { return threadId; }
     public void open(String id) {
         generation++; loading=false; handler.removeCallbacks(poll);
         threadId=id;
-        web.showThread(id);
+        web.showThread(id);composer.open(id);
         refresh();
     }
     public void close() {
         generation++; loading=false; threadId=null; handler.removeCallbacks(poll);
-        web.showList();
+        web.showList();composer.close();
     }
     public void action(String action, JSONObject payload) {
+        if(composer.action(action,payload))return;
         switch(action) {
+            case "loadRepository":
+                if(threadId!=null&&threadId.equals(payload.optString("threadId")))fetch("repository","/api/threads/"+encoded(threadId)+"/repository");
+                break;
             case "loadHistory":
                 if (threadId!=null && threadId.equals(payload.optString("threadId"))) {
                     String cursor = payload.optString("cursor");
@@ -47,6 +54,7 @@ public final class ThreadController {
                 }
                 break;
             case "openLink": openLink(payload.optString("url")); break;
+            case "openPr": if(GitHubPrUrl.root(payload.optString("url"))!=null)openPr.accept(payload.optString("url")); break;
             case "notice": new AlertDialog.Builder(activity).setMessage(payload.optString("text")).setPositiveButton("OK",null).show(); break;
         }
     }
@@ -72,7 +80,7 @@ public final class ThreadController {
                     if(activity.isDestroyed() || epoch!=generation)return;
                     JSONObject payload=new JSONObject();
                     try { payload.put("message", "Could not load " + (kind.equals("history")?"older messages":kind.equals("item")?"activity output":"live updates") + ". " + error.getMessage() + " · Keep the laptop bridge running."); } catch(Exception ignored) { }
-                    web.send("error",id,payload);
+                    web.send(kind.equals("repository")?"repositoryError":"error",id,payload);
                 });
             } finally {
                 if(kind.equals("snapshot"))handler.post(() -> {
@@ -84,12 +92,18 @@ public final class ThreadController {
     }
     private final Runnable poll=this::refresh;
     private void openLink(String url) {
+        if(GitHubPrUrl.root(url)!=null){openPr.accept(url);return;}
         Uri uri=Uri.parse(url);
         if (!("https".equals(uri.getScheme()) || "http".equals(uri.getScheme()))) return;
         new AlertDialog.Builder(activity).setTitle("Open link in browser?").setMessage(url).setNegativeButton("Cancel",null)
             .setPositiveButton("Open",(dialog,which)->{try{activity.startActivity(new Intent(Intent.ACTION_VIEW,uri));}catch(Exception ignored){}}).show();
     }
-    public void resume(){resumed=true;refresh();}
-    public void pause(){resumed=false;generation++;loading=false;handler.removeCallbacks(poll);}
-    public void dispose(){pause();handler.removeCallbacksAndMessages(null);network.shutdownNow();}
+    public void resume(){
+        resumed=true;
+        // pause() invalidates outstanding responses. Release their UI loading states too.
+        if(threadId!=null)web.send("resume",threadId,new JSONObject());
+        composer.resume();refresh();
+    }
+    public void pause(){resumed=false;composer.pause();generation++;loading=false;handler.removeCallbacks(poll);}
+    public void dispose(){pause();composer.dispose();handler.removeCallbacksAndMessages(null);network.shutdownNow();}
 }

@@ -1,3 +1,5 @@
+import { normalizePullRequests } from './pull-requests.mjs';
+import { sortSidebarThreads } from './thread-order.mjs';
 import { randomUUID } from 'node:crypto';
 
 export function normalizeOrigin(input) {
@@ -40,14 +42,14 @@ export function parsePairingUrl(input, serverOrigin) {
   return { origin: normalizeOrigin(host), credential };
 }
 
-export async function exchangePairing(input, fetcher = fetch, serverOrigin) {
+export async function exchangePairing(input, fetcher = fetch, serverOrigin, {write = false} = {}) {
   const { origin, credential } = parsePairingUrl(input, serverOrigin);
   const body = new URLSearchParams({
     grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
     subject_token: credential,
     subject_token_type: 'urn:t3:params:oauth:token-type:environment-bootstrap',
     requested_token_type: 'urn:ietf:params:oauth:token-type:access_token',
-    scope: 'orchestration:read',
+    scope: write ? 'orchestration:read orchestration:operate' : 'orchestration:read',
     client_label: 'T3 Quest bridge',
     client_device_type: 'desktop',
   });
@@ -64,7 +66,7 @@ export async function exchangePairing(input, fetcher = fetch, serverOrigin) {
   if (typeof result.access_token !== 'string' || !/^bearer$/i.test(result.token_type ?? '')) {
     throw new Error('Expected a direct-pairing bearer session. Cloud DPoP login is not implemented in this prototype.');
   }
-  return { origin, token: result.access_token, pairedAt: new Date().toISOString() };
+  return { origin, token: result.access_token, scopes: (result.scope || 'orchestration:read').split(' '), pairedAt: new Date().toISOString() };
 }
 
 export async function readShell(session, fetcher = fetch) {
@@ -91,6 +93,10 @@ export function normalizeThread(thread, projects) {
   const projectName = typeof project === 'string' ? project : project?.title || project?.name || 'Project';
   return {
     id: thread.id,
+    environmentId:thread.environmentId,
+    environmentLabel:thread.environmentLabel,
+    environmentConnected:thread.environmentConnected,
+    canSend:thread.canSend,
     title: thread.title || 'Untitled thread',
     project: projectName,
     projectId: thread.projectId,
@@ -101,12 +107,15 @@ export function normalizeThread(thread, projects) {
     runtimeMode: thread.runtimeMode || '',
     settledAt: thread.settledAt || null,
     pinnedAt: thread.pinnedAt || null,
+    pinOrderKey: thread.pinOrderKey ?? null,
+    createdAt: thread.createdAt || null,
+    unsettledAt: thread.unsettledAt || null,
     activeOrderKey: thread.activeOrderKey || null,
     lastVisitedAt: thread.lastVisitedAt || null,
     completedAt: thread.latestRunCompletedAt || null,
     pendingBackgroundTasks: thread.pendingBackgroundTasks || [],
     pendingRuntimeRequest: thread.pendingRuntimeRequest || null,
-    pullRequests: thread.pullRequests || [],
+    pullRequests: normalizePullRequests(thread),
     status,
     summary: String(thread.latestVisibleMessage?.text ?? '').slice(0, 600),
     updatedAt: thread.updatedAt,
@@ -153,7 +162,7 @@ export class ThreadMonitor {
     const liveIds = new Set(threads.map(thread => thread.id));
     for (const id of this.previous.keys()) if (!liveIds.has(id)) this.previous.delete(id);
     this.events = this.events.slice(-100);
-    this.threads = threads.sort((a, b) => String(b.updatedAt ?? '').localeCompare(String(a.updatedAt ?? '')));
+    this.threads = sortSidebarThreads(threads);
     this.initialized = true;
   }
 }

@@ -61,7 +61,7 @@ public class ProbeService extends Service {
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent == null || STOP.equals(intent.getAction())) { stopSession(); return START_NOT_STICKY; }
-        if (!START.equals(intent.getAction()) || LabState.running) return START_NOT_STICKY;
+        if (!START.equals(intent.getAction()) || LabState.running || VoiceService.activeThread!=null) return START_NOT_STICKY;
         boolean record = intent.getBooleanExtra("record", true);
         int duration = Math.max(45, Math.min(180, intent.getIntExtra("duration", 90)));
         SharedPreferences settings = getSharedPreferences("settings", MODE_PRIVATE);

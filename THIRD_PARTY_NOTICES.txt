@@ -1,5 +1,6 @@
 The read-only sidebar and timeline adapt T3 Code's Sidebar.tsx,
-MessagesTimeline.tsx/logic, projectIdentity.ts, and projectIconColors.ts.
+MessagesTimeline.tsx/logic, projectIdentity.ts, projectIconColors.ts, and
+client-runtime/state/threadSort.ts.
 Codex and Claude SVG marks are copied from apps/marketing/public/harnesses.
 Upstream: https://github.com/pingdotgg/t3code
 

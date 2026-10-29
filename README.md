@@ -2,7 +2,7 @@
 
 A sideloadable Android panel for testing a T3 Code companion during standalone Beat Saber on Quest 3.
 
-Open Beat Saber, bring up the panel, and start a timed test of alerts and microphone capture. The app saves evidence on the headset. A computer bridge displays live T3 threads and conversations through a read-only pairing.
+Open Beat Saber, bring up the panel, and start a timed test of alerts and microphone capture. The app saves evidence on the headset. A computer bridge displays live T3 threads and conversations through a scoped pairing. Voice drafts and explicit sending are available after setup.
 
 ## Run the first test
 
@@ -24,6 +24,12 @@ The [headset test guide](docs/headset-test.md) covers the visual notification, s
 
 ## Connect your laptop
 
+To mirror every environment already connected in your desktop app, use the [desktop integration](docs/connect.md#mirror-your-desktop-environments). It reuses T3's existing connections, including T3 Connect, without pairing each machine again. This requires the integration-enabled T3 desktop build; the stock Nightly app does not expose this companion connection.
+
+The separate [T3 Connect sign-in probe](docs/connect-prototype.md) tests account-based discovery without changing that setup. Live sign-in and discovery work. Connection-token authorization remains blocked, so this probe is not a replacement for the desktop integration yet.
+
+For a direct connection to one T3 server, follow these steps.
+
 In T3 Code, create a fresh direct pairing link under **Settings → Sharing & access**. In a terminal inside `t3-quest`, run:
 
 ```sh
@@ -44,17 +50,46 @@ The **Connect** tab repeats these steps and provides a manual connection option.
 
 Tap a thread in **Threads** to request a larger reading window centered just in front of the compact list. The back arrow closes the reader and reveals the list, preserving its search and scroll position. Use the sidebar button in the conversation header to switch threads within the same reader.
 
+Tap a subagent task card to open its conversation in the same reader. Subagent cards stay visible outside **Worked for…**, including running and completed tasks. The back arrow or controller Back returns to the parent, restoring its loaded history, expanded details, and scroll position. Nested tasks work the same way. Drafts remain separate for each thread. At the top-level thread, Back returns to the list. A task without a linked child thread expands its details instead.
+
 The prototype uses Meta's Layout SDK to anchor a 1000 × 780 dp child window to the center of the compact panel. It keeps the original activity and list window. If spatial windows are unavailable, the conversation opens inside the compact panel instead. Horizon OS controls final placement. Centered opening and return to the compact panel were verified on Quest 3 alongside Beat Saber.
 
 The viewer displays user messages, assistant Markdown, code blocks, completed-turn activity folds, command output, diffs, and delegated-task cards. Scroll to the top and choose **Load earlier messages** for older history. Expand activity and choose **Load full output** when T3 has omitted a command result from its snapshot. Live updates preserve your reading position; **Latest ↓** returns to the newest content.
 
-The composer is a read-only display of the thread's model, reasoning effort, and mode. Replies, approvals, edits, and voice submission remain on the laptop. Images and file attachments currently appear as labels.
+The composer accepts typed or dictated drafts after the setup below. Approvals and edits to existing messages remain on the laptop. Images and file attachments currently appear as labels.
+
+## Voice drafts and sending
+
+Run `npm run setup:voice` on your laptop. Choose OpenRouter, Wispr Flow, OpenAI, or a compatible custom endpoint, then enter your API key without echoing it. Settings stay in the ignored `.env` file. OpenRouter uses your existing credits through its [transcription endpoint](https://openrouter.ai/docs/guides/overview/multimodal/stt), with `microsoft/mai-transcribe-2` as the default; `openai/whisper-large-v3-turbo` and `mistralai/voxtral-mini-transcribe` are alternatives. Wispr Flow requires [approved developer API access](https://api-docs.wisprflow.ai/quickstart); its adapter sends 16 kHz WAV audio using the documented REST API. The OpenAI preset uses `gpt-transcribe`. Custom endpoints must accept multipart `file` and `model` and return JSON with a `text` field.
+
+The earlier pairing is read-only. In T3 Code, create a fresh direct pairing link with permission to operate threads, then run `npm run pair -- --write`. Paste the link in the terminal. Restart the bridge with `npm run connect:quest` (or `npm start` with your LAN address configured).
+
+In a thread, tap **Microphone**, speak, and tap **Stop & transcribe**. Recording starts while the panel is visible and can continue after you return focus to Beat Saber. It stops after 60 seconds. Review or edit the transcript, then tap **Send**. Messages queue behind active work. Recording and transcription never send a T3 message automatically.
+
+Drafts belong to their selected thread and survive closing the reader. Cancel stops dictation; Discard removes a draft. A failed or uncertain send keeps the same retry ID so retrying does not duplicate a message. An uncertain draft is locked until it is retried or discarded. If Quest silences the microphone during gameplay, focus the panel and record again. Background microphone capture during a song still needs device verification.
+
+The API key stays on the laptop. Dictation recordings are deleted after transcription or cancellation; drafts stay in the app’s private storage. The bridge stores only message hashes and delivery receipts for retries.
+
+## Follow pull requests and repository work
+
+Choose **Pull requests** above the thread list to see PRs linked in T3 Code. In a conversation, choose **PRs** to open the side panel. It shows the branch, checks, review status, and a next step based on that evidence. Old snapshots are labeled. Passing checks alone do not mean a PR is ready to merge.
+
+Choose **Repository activity** in the PR panel to load open PRs and recently updated issues from GitHub. The bridge uses the laptop's existing `gh` login. If it is unavailable, run `gh auth login` on the laptop. Repository reads are cached for one minute and restricted to repositories linked to the current thread. The view shows up to three repositories, 20 open PRs per repository, and a bounded issue selection. It labels incomplete or stale results. Issue order reflects recent updates, not priority or an execution queue.
+
+Choose a PR title or **View PR** to open GitHub inside the large reading panel. **Conversation**, **Files**, and **Checks** switch between PR sections. **← Thread** returns to the conversation with its draft and scroll position intact; opening from the compact list returns to **Threads**. The browser reuses the centered reader window. If spatial windows are unavailable, it opens in the existing panel.
+
+Tap an image in the PR description or comments to inspect it. Use **+** and **−** to zoom, drag to pan, **Fit** to show the whole image, or **100%** for its original size. **Close** or Android Back returns to the same position in the PR.
+
+Private repositories require signing into GitHub in this view. **Quest Browser ↗** opens the current page in the headset browser if a login flow needs it. The embedded page is the actual GitHub website with its normal controls and a separate web sign-in. Laptop GitHub credentials are not transferred to it.
+
+The summary and repository endpoints only read GitHub. Threads without a linked GitHub PR do not yet have repository discovery.
 
 ## Build and connect
 
 - [Build and install the APK](docs/setup.md)
 - [Connect the computer bridge and T3](docs/connect.md)
 - [Understand the prototype and its limits](docs/architecture.md)
+- [Preview and test without a headset](docs/browser-testing.md)
 
 The APK is generated at `app/build/outputs/apk/debug/app-debug.apk`. Node.js 22 or later runs the bridge without runtime npm dependencies. Run `npm ci` to install development dependencies for UI tests. The npm commands use a supported runtime already installed through nvm if the current shell Node is older. `npm test` runs the bridge tests.
 
@@ -68,4 +103,4 @@ The APK is generated at `app/build/outputs/apk/debug/app-debug.apk`. Node.js 22 
 - Direct T3 pairing with the `orchestration:read` permission.
 - Completion, failure, and input-request detection from T3 snapshots.
 
-The prototype does not send messages to T3, implement wake-word control, or implement T3 Connect cloud sign-in. Headset behavior must be tested on the device. A successful Android build does not establish compatibility with Beat Saber.
+The Quest app does not implement wake-word control or independent T3 Connect cloud access. The separate sign-in probe is experimental. Sending requires an operate-scoped pairing and an explicit Send action. Headset behavior must be tested on the device. Browser checks and a successful Android build do not establish microphone compatibility with Beat Saber.

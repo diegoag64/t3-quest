@@ -8,3 +8,48 @@ html,body{height:100%;overflow:hidden}#app{height:100%}
 @media(max-width:700px){.workspace-body>.sidebar{position:absolute;z-index:5;top:56px;bottom:0;width:255px;box-shadow:15px 0 40px #0009}.timeline{padding:20px}.footer{padding:4px 20px 14px}.topbar{padding:6px 10px;gap:5px}.breadcrumb{gap:7px;font-size:13px}.top-state{font-size:10px}.composer-controls{gap:12px}.composer-placeholder{font-size:13px}.breadcrumb .project-label{display:none}.breadcrumb .slash{display:none}}
 
 .subagent-time{color:#818181;font-size:12px;white-space:nowrap}.work-body .assistant{font-size:14px}.work-body .entry{margin-bottom:16px}
+
+.draft-input{display:block;width:100%;min-height:64px;max-height:150px;resize:vertical;background:transparent;border:0;outline:0;color:var(--text);font:inherit;line-height:1.5;padding:0 0 8px}.draft-input::placeholder{color:#818181}.voice-hint{font-size:12px;color:#999;line-height:1.4;margin:4px 0 10px}.composer-controls{flex-wrap:wrap;gap:8px}.composer-controls button{border:1px solid #303030;min-height:40px;padding:8px 12px;font-size:12px}.composer-model{margin-right:auto}.composer-controls .draft-send{background:#346bf1;color:white;border-color:#346bf1}.recording{border-color:#e25858}.recording .voice-hint{color:#ff9a9a}.composer-controls [hidden]{display:none}.voice-stop{color:#ff9a9a}
+
+/* Read-only pull requests follow T3's title, repository, and status hierarchy. */
+.sidebar-tabs{display:flex;gap:4px;padding:0 12px 6px;border-bottom:1px solid #141414}
+.sidebar-tab{font-size:12px;color:var(--muted);min-height:36px;padding:7px 12px}
+.sidebar-tab[aria-pressed=true]{color:var(--text);background:#1a1b1b}
+.pr-inline{margin-left:auto;color:#aaa;white-space:nowrap;font-size:12px}
+.pr-toggle{border:1px solid #262626;color:#aaa;white-space:nowrap;font-size:12px;min-height:38px;padding:6px 10px}
+.pr-toggle[aria-expanded=true]{background:#202020;color:white}
+.pr-panel{width:300px;flex-shrink:0;min-height:0;display:flex;flex-direction:column;background:#080808;border-left:1px solid var(--border)}
+.pr-panel[hidden]{display:none}
+.pr-panel-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;font-size:13px;border-bottom:1px solid var(--border)}
+.pr-close{font-size:12px;color:#aaa;min-height:36px;padding:8px}
+.pr-list{overflow:auto;min-height:0;flex:1;padding:8px}
+.pr-card{padding:12px 10px;border-bottom:1px solid #202020;min-width:0;font-size:12px;line-height:1.5}
+.pr-title{display:flex;align-items:center;gap:6px;text-align:left;min-height:40px;width:100%;padding:0;font-size:14px;color:#eee}
+.pr-title .icon{width:16px;height:16px;color:#929292}
+.pr-number{color:#aaa;flex-shrink:0}
+.pr-repository,.pr-branches{color:#929292;overflow-wrap:anywhere;margin:4px 0}
+.pr-signals{display:flex;gap:6px 10px;flex-wrap:wrap;margin:6px 0;color:#aaa;font-size:11px}
+.pr-state.open,.pr-checks.passing{color:var(--green)}
+.pr-state.merged{color:#b58aff}.pr-state.closed,.pr-checks.failing{color:#ff6467}.pr-checks.pending{color:#e9b85b}
+.pr-next{color:#e0e0e0;margin:8px 0 4px}
+.pr-freshness{font-size:10px;color:#737373;margin-top:8px}.pr-freshness.stale{color:#c5a465}
+.pr-open{padding:8px 10px;border:1px solid #292929;min-height:44px;margin-top:10px;color:var(--blue)}
+.pr-actions{display:flex;gap:8px;flex-wrap:wrap}
+.pr-stack{padding:8px;border-left:1px solid #333;margin-top:8px;color:#aaa;font-size:11px}
+@media(max-width:800px){.pr-panel{position:absolute;z-index:8;right:0;top:56px;bottom:0;width:min(340px,100%);box-shadow:-16px 0 35px #000b}.topbar{gap:5px}.pr-toggle{padding:6px;font-size:11px}}
+.repository-section{padding:12px 10px;border-top:1px solid #292929;font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+.repository-title{font-size:14px;font-weight:500;margin:20px 0 4px}.repository-section h4{font-size:12px;color:#aaa;font-weight:500;margin:18px 0 6px}
+.repository-section .pr-card{padding:10px 0}.issue-card{padding:8px 0;border-bottom:1px solid #202020}
+.issue-title{text-align:left;min-height:40px;font-size:13px;line-height:1.5;padding:0;color:#ddd}
+.section-label{padding:10px 10px 5px;color:#818181;font-size:11px}.sidebar-footer.offline{color:#d5b47b}
+/* Inline fallback leaves room for history beneath the native Quest controls. */
+@media(max-height:400px){
+  .footer{padding:2px 12px 8px}.footer .activity-line{display:none}
+  .composer{padding:10px 12px 8px;border-radius:12px}
+  .draft-input{height:36px;min-height:36px;max-height:72px;font-size:14px;resize:none}
+  .voice-hint{font-size:11px;line-height:1.3;margin:2px 0 6px}
+  .composer-controls{gap:6px}.composer-controls button{padding:6px 10px;min-height:36px}
+  .new-messages{bottom:150px}
+}
+
+.environment-label{color:#777;font-size:11px;max-width:90px}.environment-label::before{content:"· ";}.environment-select{margin:0 12px 6px;background:#0a0a0a;border:1px solid var(--border);border-radius:7px;padding:7px;color:#aaa;font-size:12px}

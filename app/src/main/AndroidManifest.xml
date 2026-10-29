@@ -25,6 +25,7 @@
                 <category android:name="com.oculus.intent.category.OVERLAY_LAUNCHER" />
             </intent-filter>
         </activity>
+        <service android:name=".VoiceService" android:exported="false" android:foregroundServiceType="microphone" />
         <service android:name=".ProbeService" android:exported="false"
             android:foregroundServiceType="microphone|mediaPlayback" />
     </application>

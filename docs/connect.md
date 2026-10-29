@@ -2,6 +2,46 @@
 
 Keep T3 Code open on your laptop. Put the laptop and Quest on the same private Wi-Fi network.
 
+## Mirror your desktop environments
+
+Desktop mode shares the enabled environments in the open T3 desktop app. T3 continues to own each LAN, SSH, or T3 Connect connection and its credentials. Quest shows an environment label on each thread and an **All environments** filter. Offline environments retain their last available summaries. Sending follows the destination environment's permissions.
+
+This mode needs an integration-enabled desktop build. Stock T3 Nightly does not include the adapter. No new machine pairing is required, but Quest still needs its existing connection to the laptop bridge.
+
+### Use the prepared macOS copy
+
+1. Quit the ordinary T3 Code app. Open `.tools/Launch T3 Quest Desktop.command` in this checkout. The launcher opens the separate `T3 Code Quest.app` copy with the adapter enabled. It uses the same desktop profile so existing environments remain available.
+2. Stop the previous bridge terminal, then start desktop mode at the same laptop address:
+
+   ```sh
+   BRIDGE_HOST=192.168.1.20 npm run start:desktop
+   ```
+
+   Replace the address with your laptop's address. The bridge token and headset settings stay the same. If you need to transfer settings again, use `T3_QUEST_SOURCE=desktop npm run connect:quest` instead.
+3. Install the updated Quest APK with `npm run install:quest`, then open **Threads**. Select **All environments**, or filter by machine.
+
+Keep the integrated desktop app open. Closing it disconnects all environments from Quest. If one environment is unavailable, reconnect it in T3 Code. Desktop mode does not use `.state/t3-session.json` or require an operate-scoped pairing; reviewed sends use that environment's existing desktop permissions.
+
+The local copy is ad-hoc signed, with automatic updates disabled by its launcher. It cannot use T3 Tools' signed Touch ID keychain group. macOS may request Keychain access for the local build. Return to the installed Nightly by quitting the copy and opening the ordinary app. Use `npm start` to restore the single-server bridge.
+
+### Build the desktop integration
+
+Use a separate T3 checkout at the exact revision of your installed app. The adapter was compiled against `v0.1.4-nightly.20261027.3783` (`dc84b0962efa`). From `t3-quest`, run:
+
+```sh
+npm run setup:desktop -- --source /path/to/t3code
+```
+
+Build that checkout's web and desktop entry points with T3's build tools and its public Clerk and relay configuration. The helper adds the renderer adapter and two Electron hooks; it refuses to overwrite edited integration files. The private local link configuration is saved in `.state/desktop-link.json`.
+
+On macOS, package the built code into a separate copy:
+
+```sh
+npm run package:desktop -- --source /path/to/t3code --app '/Applications/T3 Code (Nightly).app'
+```
+
+The packaging helper verifies the source revision, retains the installed server and dependencies, replaces the renderer and desktop entry points, and verifies the local signature. It never launches the app or modifies the installed copy. To remove the source hooks, run `npm run setup:desktop -- --source /path/to/t3code --remove` and rebuild T3.
+
 ## Pair T3 and transfer the connection over USB
 
 1. In T3 Code, open **Settings → Sharing & access** and create a fresh direct pairing link. If your chosen address needs LAN access, enable **Network access** first.
@@ -25,6 +65,22 @@ Keep T3 Code open on your laptop. Put the laptop and Quest on the same private W
 9. Open **Threads** to see live summaries. Tap a thread for its summary. Use **Test → Start 90s test** to test background alerts during Beat Saber.
 
 If the panel says **Laptop connected · demo**, the bridge is reachable but has no T3 pairing. Run `npm run pair`, stop the bridge with Ctrl+C, and restart `npm run connect:quest`.
+
+For a desktop link such as `t3code://app/pair#token=YOUR_CODE`, you can specify the server first and paste the link at the prompt:
+
+```sh
+npm run pair -- --server http://127.0.0.1:3773
+```
+
+Use the address of the T3 server that created the link. The `app` part of the desktop URL is not a network address. The default address above is for T3 on the same laptop.
+
+The helper also accepts a quoted URL argument:
+
+```sh
+npm run pair -- --server http://127.0.0.1:3773 't3code://app/pair#token=YOUR_CODE'
+```
+
+Prefer the prompt to keep the token out of shell history. Add `--write` only when you want to enable reviewed message sending and the pairing permits it. Failed pairing leaves the previous saved session intact. Desktop mode uses its existing environment connections and does not need this command.
 
 If macOS asks for Node network access, allow access on the private network you are using.
 
